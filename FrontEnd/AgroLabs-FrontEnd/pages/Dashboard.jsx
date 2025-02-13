@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Dimensions, SafeAreaView, Platform, TouchableOpacity } from 'react-native';
+import { FontAwesome } from '@expo/vector-icons';
 import { faker } from '@faker-js/faker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FontAwesome } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
+import { Dimensions, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, Alert, Platform } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { Picker } from '@react-native-picker/picker';
 
 const primaryColor = '#0a4fd9';
 const whiteColor = '#ffffff';
@@ -13,10 +15,12 @@ const grayColor = '#888888';
 const screenWidth = Dimensions.get('window').width;
 const screenHeight = Dimensions.get('window').height;
 
+// Adjusted breakpoints for better responsiveness
 const breakpoints = {
-  small: 600,
-  medium: 900,
-  large: 1200,
+  small: 480, // Extra small screens (phones)
+  medium: 768, // Small screens (tablets)
+  large: 992, // Medium screens (desktops)
+  xLarge: 1200, // Large screens (large desktops)
 };
 
 const useScreenSize = () => {
@@ -50,8 +54,8 @@ const useScreenSize = () => {
 export default function Dashboard() {
   const [contractData, setContractData] = useState({
     activeContracts: 125,
-    expiringContracts: 125,
-    expiredContracts: 125,
+    expiringContracts: 50,
+    expiredContracts: 5,
     cnpjContracts: [
       { label: 'Exemplo 01', value: 40 },
       { label: 'Exemplo 02', value: 35 },
@@ -66,6 +70,34 @@ export default function Dashboard() {
     loading: false,
   });
 
+  const [filterValue, setFilterValue] = useState('TODOS');
+  const [filteredTableData, setFilteredTableData] = useState(contractData.tableData);
+
+  useEffect(() => {
+    applyFilter();
+  }, [filterValue, contractData.tableData]);
+
+  const applyFilter = () => {
+    let filteredData = [...contractData.tableData];
+
+    if (filterValue === '6 Meses') {
+      filteredData = filteredData.filter(item => {
+        const expirationDate = new Date(item.expirationDate);
+        const sixMonthsFromNow = new Date();
+        sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+        return expirationDate <= sixMonthsFromNow;
+      });
+    } else if (filterValue === 'Vencidos') {
+      filteredData = filteredData.filter(item => {
+        const expirationDate = new Date(item.expirationDate);
+        const now = new Date();
+        return expirationDate < now;
+      });
+    }
+
+    setFilteredTableData(filteredData);
+  };
+
   const screenSize = useScreenSize();
 
   const calculateBarWidth = (value, maxValue) => {
@@ -77,13 +109,46 @@ export default function Dashboard() {
   const maxValue = Math.max(...contractData.cnpjContracts.map(item => item.value));
 
   const cardStyle = {
-    width: screenSize === 'small' ? '100%' : screenSize === 'medium' ? '45%' : '30%',
+    width: screenSize === 'small' ? '100%' : screenSize === 'medium' ? '48%' : '30%', // Adjusted for better tablet layout
+    marginBottom: 15, // Added margin for spacing
   };
 
   const tableHeaderTextSize = screenSize === 'small' ? 12 : 14;
   const tableCellTextSize = screenSize === 'small' ? 10 : 12;
   const tableFlexBasis = 'auto';
   const tableConditionFlex = 2;
+
+  const handleDocumentUpload = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        multiple: false,
+      });
+
+      if (result.type === 'success') {
+        console.log('Document URI:', result.uri);
+        console.log('Document Name:', result.name);
+        console.log('Document Size:', result.size);
+        console.log('Document Type:', result.mimeType);
+
+        Alert.alert(
+          'Document Selected',
+          `Name: ${result.name}\nType: ${result.mimeType}\nSize: ${result.size} bytes`,
+          [{ text: 'OK', onPress: () => console.log('OK Pressed') }]
+        );
+      } else {
+        console.log('Document picking cancelled');
+      }
+    } catch (err) {
+      console.error('Error picking document:', err);
+      Alert.alert(
+        'Error',
+        'An error occurred while picking the document.',
+        [{ text: 'OK', onPress: () => console.log('OK Pressed') }]
+      );
+    }
+  };
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -98,7 +163,7 @@ export default function Dashboard() {
             <Text style={styles.cardValue}>{contractData.expiringContracts}</Text>
           </View>
           <View style={[styles.card, cardStyle]}>
-            <Text style={styles.cardTitle}>Contratos a 6 meses do vencimento</Text>
+            <Text style={styles.cardTitle}>Contratos vencidos</Text>
             <Text style={styles.cardValue}>{contractData.expiredContracts}</Text>
           </View>
         </View>
@@ -121,10 +186,27 @@ export default function Dashboard() {
           ))}
         </View>
 
-        <TouchableOpacity style={[styles.uploadButton, styles.sectionSpacing]}>
-          <FontAwesome name="upload" size={16} color={primaryColor} style={{ marginRight: 5 }} />
-          <Text style={styles.uploadButtonText}>Faça upload de um novo documento</Text>
-        </TouchableOpacity>
+        <View style={[styles.filterUploadContainer, styles.sectionSpacing]}>
+          <View style={styles.filterContainer}>
+            <Text style={styles.filterLabel}>Filtro:</Text>
+            <Picker
+              selectedValue={filterValue}
+              style={styles.picker}
+              onValueChange={(itemValue, itemIndex) => setFilterValue(itemValue)}
+            >
+              <Picker.Item label="TODOS" value="TODOS" />
+              <Picker.Item label="6 Meses" value="6 Meses" />
+              <Picker.Item label="Vencidos" value="Vencidos" />
+            </Picker>
+          </View>
+
+          <TouchableOpacity style={[styles.uploadButton, screenSize === 'small' && styles.uploadButtonSmall]} onPress={handleDocumentUpload}>
+            <FontAwesome name="upload" size={screenSize === 'small' ? 14 : 16} color={primaryColor} style={{ marginRight: 5 }} />
+            <Text style={[styles.uploadButtonText, screenSize === 'small' && styles.uploadButtonTextSmall]}>
+              Faça upload de um novo documento
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={[styles.tableCard, styles.sectionSpacing]}>
           <View style={styles.tableHeader}>
@@ -134,7 +216,7 @@ export default function Dashboard() {
             <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: tableConditionFlex, fontSize: tableHeaderTextSize }]}>Condicionamento</Text>
             <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 0.5, fontSize: tableHeaderTextSize, textAlign: 'center' }]}>Arquivo</Text>
           </View>
-          {contractData.tableData.map((row, index) => (
+          {filteredTableData.map((row, index) => (
             <View style={styles.tableRow} key={index}>
               <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }]}>{row.cnpj}</Text>
               <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }]}>{row.type}</Text>
@@ -213,9 +295,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 3,
-    borderColor: '#9966CC', // Border color
-    borderWidth: 1, // Border width
-    marginBottom: 20, // Adjusted margin
+    borderColor: '#9966CC',
+    borderWidth: 1,
+    marginBottom: 20,
   },
   chartTitle: {
     fontSize: 18,
@@ -292,9 +374,9 @@ const styles = StyleSheet.create({
   uploadButton: {
     flexDirection: 'row',
     backgroundColor: whiteColor,
-    borderRadius: 20, // Make it rounded
-    paddingVertical: 20, // Adjust vertical padding
-    paddingHorizontal: 20, // Adjust horizontal padding
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -302,11 +384,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 3,
-    alignSelf: 'center',
-    borderWidth: 1, // Add border
-    borderColor: primaryColor, // Border color
-    width: '80%', // Adjust the width to center it
-    marginTop: 20, // Adjusted margin
+    borderWidth: 1,
+    borderColor: primaryColor,
+    alignSelf: 'center', // Centraliza o botão
   },
   uploadButtonText: {
     fontSize: 16,
@@ -314,10 +394,41 @@ const styles = StyleSheet.create({
     color: primaryColor,
   },
   middleCardSpacing: {
-    marginLeft: 10,
-    marginRight: 10,
+    marginLeft: 0,
+    marginRight: 0,
   },
   sectionSpacing: {
-    marginTop: 20, // Add spacing between sections
+    marginTop: 20,
+  },
+  filterUploadContainer: {
+    flexDirection: 'row', // Alinha os itens horizontalmente
+    justifyContent: 'space-between', // Espaço entre os itens
+    alignItems: 'center', // Alinha os itens verticalmente ao centro
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  filterLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: primaryColor,
+    marginRight: 10,
+  },
+  picker: {
+    height: 40,
+    width: Platform.OS === 'web' ? 200 : 150, // Adjust width for web
+    backgroundColor: whiteColor,
+    color: primaryColor,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: primaryColor,
+  },
+  uploadButtonSmall: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  uploadButtonTextSmall: {
+    fontSize: 14,
   },
 });
