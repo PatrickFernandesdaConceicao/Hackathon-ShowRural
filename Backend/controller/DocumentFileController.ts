@@ -3,7 +3,6 @@ import { DocumentFileService } from "../services/documentFileService";
 
 export const postDocumentFile = async (req: Request, res: Response) => {
     try {
-        console.log("Oi")
         const buffer = req.file!.buffer;
         const document = await DocumentFileService.create({document_pdf: buffer});
     
