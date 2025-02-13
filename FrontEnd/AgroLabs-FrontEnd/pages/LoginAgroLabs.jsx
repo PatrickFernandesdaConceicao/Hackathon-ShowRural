@@ -10,11 +10,20 @@ import {
   Keyboard,
   Dimensions,
   Animated,
-  Image, // Importe o componente Image
+  Image,
 } from 'react-native';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native'; // Import useNavigation
+import { useNavigation } from '@react-navigation/native';
+
+// Cores reutilizáveis
+const lightBlueColor = '#E8F0FE'; // Cor de fundo dos inputs
+const darkBlueColor = '#00008B';
+const whiteColor = '#FFFFFF';
+const transparentWhiteColor = 'rgba(255,255,255,0.3)';
+const semiTransparentWhiteColor = 'rgba(255,255,255,0.1)';
+const shadowColor = '#000';
+const agroLabsBlueColor = '#2148C0';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,11 +31,10 @@ const LoginAgroLabs = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [shakeAnimation] = useState(new Animated.Value(0));
-  const navigation = useNavigation(); // Initialize navigation
+  const navigation = useNavigation();
 
   const handleLogin = () => {
     if (!username || !password) {
-      // Trigger shake animation
       Animated.sequence([
         Animated.timing(shakeAnimation, { toValue: 10, duration: 100, useNativeDriver: true }),
         Animated.timing(shakeAnimation, { toValue: -10, duration: 100, useNativeDriver: true }),
@@ -36,15 +44,11 @@ const LoginAgroLabs = () => {
       return;
     }
 
-    // Implement your login logic here
     console.log('Logging in with:', username, password);
-
-    // Navigate to CadastroDocuments screen
     navigation.navigate('CadastroDocumento');
   };
 
   const handleForgotPassword = () => {
-    // Implement your forgot password logic here
     console.log('Forgot Password pressed');
   };
 
@@ -54,144 +58,90 @@ const LoginAgroLabs = () => {
   });
 
   return (
-    <LinearGradient
-      colors={['#2148C0', '#294399']} // Gradient background
-      style={styles.gradient}
-    >
-      {/* Diagonal Gradient Background */}
-      <LinearGradient
-        colors={['#00FF00', '#000080']} // Verde limão e azul marinho
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.diagonalBackground}
-      />
-      <View style={styles.innerContainer}>
-        {/* Logo */}
-        <Image
-          source={require('../assets/icon.png')} // Caminho para a sua logo
-          style={styles.logo}
-          resizeMode="contain"
-        />
-
-        {/* Username Input */}
+    <View style={styles.container}>
+      <View style={styles.formContainer}>
+        <Text style={styles.label}>Username</Text>
         <Animated.View style={[styles.inputContainer, { transform: [{ translateX: shake }] }]}>
-          <FontAwesome name="user" size={20} color="white" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Username"
-            placeholderTextColor="rgba(255,255,255,0.7)"
+            placeholder="Digite seu username"
+            placeholderTextColor="#888"
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
           />
         </Animated.View>
 
-        {/* Password Input */}
+        <Text style={styles.label}>Password</Text>
         <Animated.View style={[styles.inputContainer, { transform: [{ translateX: shake }] }]}>
-          <FontAwesome name="lock" size={20} color="white" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="rgba(255,255,255,0.7)"
+            placeholder="Digite sua senha"
+            placeholderTextColor="#888"
             secureTextEntry={true}
             value={password}
             onChangeText={setPassword}
           />
         </Animated.View>
 
-        {/* Login Button */}
         <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
           <Text style={styles.loginButtonText}>Login</Text>
         </TouchableOpacity>
 
-        {/* Forgot Password */}
         <TouchableOpacity onPress={handleForgotPassword}>
-          <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+          <Text style={styles.forgotPasswordText}>Esqueci minha senha?</Text>
         </TouchableOpacity>
       </View>
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  gradient: {
+  container: {
     flex: 1,
+    backgroundColor: '#fff', // Fundo branco
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 20,
   },
-  diagonalBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    opacity: 0.2, // Ajuste a opacidade conforme necessário
-  },
-  innerContainer: {
+  formContainer: {
     width: '80%',
     maxWidth: 400,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  logo: {
-    width: 150, // Ajuste o tamanho conforme necessário
-    height: 150, // Ajuste o tamanho conforme necessário
-    marginBottom: 20, // Espaçamento abaixo da logo
-  },
-  iconContainer: {
-    marginBottom: 40,
-    alignItems: 'center',
-  },
-  arrowIcon: {
-    marginTop: -10,
+  label: {
+    fontSize: 16,
+    marginBottom: 5,
+    color: '#333',
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
     width: '100%',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 5,
-    paddingHorizontal: 10,
     marginBottom: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)', // Subtle background
-  },
-  inputIcon: {
-    marginRight: 10,
-    opacity: 0.8,
   },
   input: {
-    flex: 1,
-    height: 45,
-    color: 'white',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
     fontSize: 16,
+    backgroundColor: lightBlueColor, // Cor de fundo dos inputs
+    color: '#333',
   },
   loginButton: {
-    backgroundColor: 'white',
+    backgroundColor: agroLabsBlueColor,
     paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-    width: '100%',
+    borderRadius: 8,
     alignItems: 'center',
     marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
   },
   loginButtonText: {
-    color: '#2148C0',
+    color: whiteColor,
     fontSize: 18,
     fontWeight: 'bold',
-    textTransform: 'uppercase',
   },
   forgotPasswordText: {
-    color: 'rgba(255,255,255,0.8)',
+    color: agroLabsBlueColor,
     fontSize: 16,
+    textAlign: 'center',
   },
 });
 
