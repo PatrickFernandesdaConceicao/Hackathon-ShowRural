@@ -10,7 +10,6 @@ export class DocumentService {
         try {
             if (!data) throw new Error("Doenst send data documents.");
 
-            console.log(extractedText)
             const newDocument = await DocumentRepositorie.create(data);
             return newDocument
         } catch (error) {
