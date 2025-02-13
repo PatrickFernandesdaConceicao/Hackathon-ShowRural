@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Dimensions, SafeAreaView, Platform } from 'react-native';
 import { faker } from '@faker-js/faker';
+import { LinearGradient } from 'expo-linear-gradient'; // Import LinearGradient
 
 const primaryColor = '#0a4fd9';
 const whiteColor = '#ffffff';
@@ -98,8 +99,15 @@ export default function Dashboard() {
           {contractData.cnpjContracts.map((item, index) => (
             <View style={styles.bar} key={index}>
               <Text style={styles.barLabel}>{item.label}</Text>
-              <View style={[styles.barFill, { width: calculateBarWidth(item.value, maxValue) }]} />
-              <Text style={styles.barValue}>{item.value}</Text>
+              <View style={styles.barContainer}>
+                <LinearGradient
+                  colors={[primaryColor, '#668ad8']} // Define gradient colors
+                  style={[styles.barFill, { width: calculateBarWidth(item.value, maxValue) }]}
+                  start={[0, 0]} // Start point of the gradient
+                  end={[1, 0]}   // End point of the gradient
+                />
+                <Text style={styles.barValue}>{item.value}</Text>
+              </View>
             </View>
           ))}
         </View>
@@ -204,17 +212,20 @@ const styles = StyleSheet.create({
     color: primaryColor,
     width: 70,
   },
+  barContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexGrow: 1,
+    justifyContent: 'space-between', // Push content to the edges
+  },
   barFill: {
-    backgroundColor: primaryColor,
     height: 16,
     borderRadius: 8,
-    marginRight: 5,
-    flexGrow: 1,
+    overflow: 'hidden', // Ensure the gradient stays within the border radius
   },
   barValue: {
     fontSize: isWeb ? 14 : 12, // Adjust font size for web
     color: primaryColor,
-    marginLeft: 5,
     width: 35,
     textAlign: 'right',
   },

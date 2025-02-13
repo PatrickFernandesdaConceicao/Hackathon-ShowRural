@@ -1,235 +1,316 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, Platform, Dimensions } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
+import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Dimensions, SafeAreaView, Platform } from 'react-native';
+import { faker } from '@faker-js/faker';
+import { LinearGradient } from 'expo-linear-gradient'; // Import LinearGradient
 
 const primaryColor = '#0a4fd9';
 const whiteColor = '#ffffff';
-const containerColor = '#eeeffb'; // Container background
-const backgroundColor = '#ffffff'; // Main background
-const borderColor = '#0a4fd9';
-const blackColor = '#110c11';
-const darkBlueColor = '#041745';
-const offWhiteColor = '#f2f0e8';
+const containerColor = '#eeeffb';
+const redColor = '#ff4d4d';
+const grayColor = '#888888';
 
-export default function CadastroDocumento() {
-  const [nome, setNome] = useState('');
-  const [cpfCnpj, setCpfCnpj] = useState('');
-  const [tipoDocumento, setTipoDocumento] = useState('');
-  const [dataVencimento, setDataVencimento] = useState('');
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState(null);
-  const [isWeb, setIsWeb] = useState(false);
-  const [isSmallScreen, setIsSmallScreen] = useState(false);
+const screenWidth = Dimensions.get('window').width; // Get screen width
+const screenHeight = Dimensions.get('window').height; // Get screen height
+
+// Define responsive breakpoints
+const breakpoints = {
+  small: 600,
+  medium: 900,
+  large: 1200,
+};
+
+// Custom hook to determine screen size
+const useScreenSize = () => {
+  const [screenSize, setScreenSize] = useState('large'); // Default to large
 
   useEffect(() => {
-    // Detecta se está rodando na web
-    setIsWeb(Platform.OS === 'web');
+    const handleResize = () => {
+      const width = Dimensions.get('window').width;
 
-    // Detecta se a tela é pequena (útil para dispositivos móveis)
-    const { width } = Dimensions.get('window');
-    setIsSmallScreen(width < 768); // Ajuste o valor conforme necessário
+      if (width < breakpoints.small) {
+        setScreenSize('small');
+      } else if (width < breakpoints.medium) {
+        setScreenSize('medium');
+      } else if (width < breakpoints.large) {
+        setScreenSize('large');
+      } else {
+        setScreenSize('xLarge');
+      }
+    };
+
+    // Initial call
+    handleResize();
+
+    // Listen for window resize events
+    Dimensions.addEventListener('change', handleResize);
+
+    // Clean up the event listener
+    return () => Dimensions.removeEventListener('change', handleResize);
   }, []);
 
-  const handleDocumentSelection = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf'], // Allow only PDF
-        copyToCacheDirectory: false,
+  return screenSize;
+};
+
+export default function Dashboard() {
+  const [contractData, setContractData] = useState({
+    activeContracts: 0,
+    expiringContracts: 0,
+    expiredContracts: 0,
+    cnpjContracts: [],
+    tableData: [],
+    loading: true,
+  });
+
+  const screenSize = useScreenSize(); // Use the custom hook
+
+  useEffect(() => {
+    // Simulate fetching data from an API
+    setTimeout(() => {
+      const activeContracts = faker.number.int({ min: 100, max: 200 });
+      const expiringContracts = faker.number.int({ min: 50, max: 100 });
+      const expiredContracts = faker.number.int({ min: 10, max: 30 });
+
+      const cnpjContracts = [
+        { label: 'Exemplo 01', value: faker.number.int({ min: 30, max: 60 }) },
+        { label: 'Exemplo 02', value: faker.number.int({ min: 20, max: 50 }) },
+        { label: 'Exemplo 03', value: faker.number.int({ min: 40, max: 70 }) },
+      ];
+
+      const tableData = Array.from({ length: 10 }, () => ({
+        cnpj: faker.string.alphanumeric(14),
+        type: faker.commerce.product(),
+        expirationDate: faker.date.future().toLocaleDateString(),
+        condition: faker.lorem.sentence(5),
+      }));
+
+      setContractData({
+        activeContracts,
+        expiringContracts,
+        expiredContracts,
+        cnpjContracts,
+        tableData,
+        loading: false,
       });
+    }, 1500); // Simulate a 1.5 second loading time
+  }, []);
 
-      if (result.type === 'success') {
-        const { name, size, uri } = result;
-        const fileExtension = name.split('.').pop().toLowerCase();
-
-        if (fileExtension === 'pdf') {
-          setSelectedDocument({ name, size, uri });
-        } else {
-          Alert.alert('Erro', 'Por favor, selecione um arquivo PDF.');
-        }
-      }
-    } catch (err) {
-      console.error('Erro ao selecionar o documento:', err);
-      Alert.alert('Erro', 'Ocorreu um erro ao selecionar o documento.');
-    }
+  const calculateBarWidth = (value, maxValue) => {
+    const maxWidthPercentage = 80; // Limit the bar width to 80% of the container
+    const calculatedWidth = (value / maxValue) * maxWidthPercentage;
+    return `${Math.min(calculatedWidth, maxWidthPercentage)}%`; // Ensure it doesn't exceed maxWidthPercentage
   };
 
-  const handleSubmit = () => {
-    if (!nome || !cpfCnpj || !tipoDocumento || !dataVencimento) {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos.');
-      return;
-    }
+  const maxValue = Math.max(...contractData.cnpjContracts.map(item => item.value));
 
-    if (!termsAccepted) {
-      Alert.alert('Erro', 'Por favor, aceite os termos de condições do usuário.');
-      return;
-    }
+  if (contractData.loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={primaryColor} />
+        <Text style={styles.loadingText}>Carregando dados...</Text>
+      </View>
+    );
+  }
 
-    if (!selectedDocument) {
-      Alert.alert('Erro', 'Por favor, selecione um documento.');
-      return;
-    }
-
-    // Aqui você pode adicionar a lógica para enviar os dados e o documento para o servidor
-    Alert.alert('Sucesso', 'Cadastro realizado com sucesso!');
-    console.log('Dados do formulário:', {
-      nome,
-      cpfCnpj,
-      tipoDocumento,
-      dataVencimento,
-      termsAccepted,
-      selectedDocument,
-    });
+  // Define styles based on screen size
+  const cardStyle = {
+    width: screenSize === 'small' ? '100%' : screenSize === 'medium' ? '45%' : '30%',
   };
+
+  const tableHeaderTextSize = screenSize === 'small' ? 12 : 14;
+  const tableCellTextSize = screenSize === 'small' ? 10 : 12;
 
   return (
-    <View style={[styles.container, { backgroundColor: backgroundColor }]}>
-      <View style={[styles.contentContainer, isSmallScreen && { flexDirection: 'column' }]}>
-        <View style={[styles.formContainer, { backgroundColor: containerColor, borderRadius: 10, width: isSmallScreen ? '100%' : '45%', marginRight: isSmallScreen ? 0 : 20 }]}>
-          <Text style={[styles.label, { color: darkBlueColor }]}>Digite seu nome</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: whiteColor, borderColor: borderColor, borderRadius: 5, color: darkBlueColor }]}
-            value={nome}
-            onChangeText={setNome}
-          />
-
-          <Text style={[styles.label, { color: darkBlueColor }]}>CPF / CNPJ</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: whiteColor, borderColor: borderColor, borderRadius: 5, color: darkBlueColor }]}
-            value={cpfCnpj}
-            onChangeText={setCpfCnpj}
-            keyboardType="numeric"
-          />
-
-          <Text style={[styles.label, { color: darkBlueColor }]}>Tipo de documento</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: whiteColor, borderColor: borderColor, borderRadius: 5, color: darkBlueColor }]}
-            value={tipoDocumento}
-            onChangeText={setTipoDocumento}
-          />
-
-          <Text style={[styles.label, { color: darkBlueColor }]}>Data de vencimento</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: whiteColor, borderColor: borderColor, borderRadius: 5, color: darkBlueColor }]}
-            value={dataVencimento}
-            onChangeText={setDataVencimento}
-            placeholder="DD/MM/AAAA"
-            placeholderTextColor={darkBlueColor}
-          />
-
-          <View style={styles.termsContainer}>
-            <TouchableOpacity style={styles.checkbox} onPress={() => setTermsAccepted(!termsAccepted)}>
-              <MaterialCommunityIcons
-                name={termsAccepted ? "check-circle" : "circle-outline"}
-                size={24}
-                color={borderColor}
-              />
-            </TouchableOpacity>
-            <Text style={[styles.termsText, { color: darkBlueColor }]}>Concordo que li e aceito os termos de condições do usuário</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.row}>
+          <View style={[styles.card, cardStyle]}>
+            <Text style={styles.cardTitle}>Contratos ativos</Text>
+            <Text style={styles.cardValue}>{contractData.activeContracts}</Text>
+          </View>
+          <View style={[styles.card, cardStyle]}>
+            <Text style={styles.cardTitle}>Contratos a 6 meses do vencimento</Text>
+            <Text style={styles.cardValue}>{contractData.expiringContracts}</Text>
+          </View>
+          <View style={[styles.card, cardStyle]}>
+            <Text style={styles.cardTitle}>Contratos vencidos</Text>
+            <Text style={[styles.cardValue, { color: redColor }]}>{contractData.expiredContracts}!</Text>
           </View>
         </View>
 
-        <View style={[styles.uploadContainer, { backgroundColor: containerColor, borderRadius: 10, width: isSmallScreen ? '100%' : '45%' }]}>
-          <Text style={[styles.uploadTitle, { color: darkBlueColor }]}>Faça upload do documento:</Text>
-          <TouchableOpacity style={[styles.uploadButton, { backgroundColor: whiteColor, borderColor: borderColor, borderStyle: 'dashed', borderRadius: 10 }] } onPress={handleDocumentSelection}>
-            <MaterialCommunityIcons name="upload" size={24} color={borderColor} />
-            <Text style={[styles.uploadButtonText, { color: borderColor }]}>Faça o upload</Text>
-          </TouchableOpacity>
-          {selectedDocument && (
-            <View style={styles.selectedDocumentContainer}>
-              <Text style={[styles.selectedDocumentText, { color: darkBlueColor }]}>
-                Documento selecionado: {selectedDocument.name}
-              </Text>
+        <View style={styles.chartCard}>
+          <Text style={styles.chartTitle}>Contratos por CNPJ</Text>
+          {contractData.cnpjContracts.map((item, index) => (
+            <View style={styles.bar} key={index}>
+              <Text style={styles.barLabel}>{item.label}</Text>
+              <View style={styles.barContainer}>
+                <LinearGradient
+                  colors={[primaryColor, '#668ad8']} // Define gradient colors
+                  style={[styles.barFill, { width: calculateBarWidth(item.value, maxValue) }]}
+                  start={[0, 0]} // Start point of the gradient
+                  end={[1, 0]}   // End point of the gradient
+                />
+                <Text style={styles.barValue}>{item.value}</Text>
+              </View>
             </View>
-          )}
-          <Text style={[styles.pdfText, { color: darkBlueColor }]}>Somente PDF</Text>
+          ))}
         </View>
-      </View>
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-        <Text style={[styles.submitButtonText, { color: darkBlueColor }]}>Cadastrar</Text>
-      </TouchableOpacity>
-    </View>
+
+        <View style={styles.tableCard}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableHeaderTextSize }]}>CNPJ</Text>
+            <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableHeaderTextSize }]}>Tipo</Text>
+            <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableHeaderTextSize }]}>Vencimento</Text>
+            <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: tableConditionFlex, fontSize: tableHeaderTextSize }]}>Condicionamento</Text>
+          </View>
+          {contractData.tableData.map((row, index) => (
+            <View style={styles.tableRow} key={index}>
+              <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }]}>{row.cnpj}</Text>
+              <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }]}>{row.type}</Text>
+              <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }]}>{row.expirationDate}</Text>
+              <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: tableConditionFlex, fontSize: tableCellTextSize }]}>{row.condition}</Text>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+    backgroundColor: containerColor, // Ensure the entire screen has the background color
   },
-  contentContainer: {
+  container: {
+    paddingHorizontal: 15,
+    paddingTop: 15,
+    paddingBottom: 30,
+    maxWidth: 1200, // Limit width on web for better readability
+    alignSelf: 'center', // Center on web, stretch on mobile
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: containerColor,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: grayColor,
+  },
+  row: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  formContainer: {
-    padding: 20,
-    width: '45%',
-    marginRight: 20,
-  },
-  label: {
-    fontSize: 14,
-    marginBottom: 5,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 5,
-    padding: 10,
+    justifyContent: 'space-between',
     marginBottom: 15,
+    flexWrap: 'wrap', // Allow cards to wrap to the next line
   },
-  termsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  card: {
+    backgroundColor: whiteColor,
+    borderRadius: 10,
+    padding: 15,
     marginBottom: 15,
-  },
-  checkbox: {
-    marginRight: 10,
-  },
-  termsText: {
-    fontSize: 12,
-  },
-  uploadContainer: {
-    padding: 20,
-    width: '45%',
     alignItems: 'center',
-    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 3,
   },
-  uploadTitle: {
+  cardTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 15,
+    color: primaryColor,
+    marginBottom: 5,
+    textAlign: 'center',
   },
-  uploadButton: {
-    borderWidth: 1,
+  cardValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: primaryColor,
+  },
+  chartCard: {
+    backgroundColor: whiteColor,
     borderRadius: 10,
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  chartTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: primaryColor,
     marginBottom: 10,
   },
-  uploadButtonText: {
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  barLabel: {
     fontSize: 14,
-    marginTop: 5,
+    color: primaryColor,
+    width: 70,
   },
-  pdfText: {
-    fontSize: 12,
+  barContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexGrow: 1,
+    position: 'relative', // Important:  This makes it the positioning context
   },
-  selectedDocumentContainer: {
-    marginTop: 10,
+  barFill: {
+    height: 16,
+    borderRadius: 8,
+    overflow: 'hidden', // Ensure the gradient stays within the border radius
   },
-  selectedDocumentText: {
+  barValue: {
+    fontSize: 14,
+    color: primaryColor,
+    position: 'absolute', // Absolutely position the number
+    right: 0,           // Align to the right edge
+    top: 0,             // Align to the top
+    bottom: 0,          // Align to the bottom
+    justifyContent: 'center', // Vertically center the text
+    textAlign: 'right',
+    paddingRight: 5,
   },
-  submitButton: {
+  tableCard: {
     backgroundColor: whiteColor,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-    marginTop: 20,
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 3,
   },
-  submitButtonText: {
-    fontSize: 16,
+  tableHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  tableHeaderText: {
     fontWeight: 'bold',
+    color: primaryColor,
+    textAlign: 'left',
+    flex: 1,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: containerColor,
+  },
+  tableCell: {
+    color: grayColor,
+    textAlign: 'left',
+    flex: 1,
+    overflow: 'hidden', // Prevent text overflow
   },
 });
