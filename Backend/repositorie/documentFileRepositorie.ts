@@ -13,7 +13,7 @@ export class DocumentFileRepositorie {
     }
 
     static async findById(id: string): Promise<DocumentFile | null> {
-        const document = await PrismaDB.prisma.documentFile.findFirst({
+        const document = await PrismaDB.prisma.documentFile.findUnique({
             where: {
                 id
             }

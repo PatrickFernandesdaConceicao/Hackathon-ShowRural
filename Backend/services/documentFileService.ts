@@ -21,10 +21,19 @@ export class DocumentFileService {
 
 
             console.log(extractedText)
-
+            const newDocument = await DocumentFileRepositorie.create(data);
+            return newDocument
         } catch (error) {
             console.error("Erro ao processar PDF:", error);
             throw new Error("Falha ao processar o arquivo PDF.");
         }
+    }
+
+    static async findById(id: string) {
+        if(!id) throw new Error("Id doesn't sended!");
+
+        const document = await DocumentFileRepositorie.findById(id);
+
+        return { buffer: document?.document_pdf};
     }
 }
