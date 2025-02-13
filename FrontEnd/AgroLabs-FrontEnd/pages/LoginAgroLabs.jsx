@@ -11,6 +11,7 @@ import {
   Dimensions,
   Animated,
   Image,
+  Platform, // Importe Platform
 } from 'react-native';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -58,41 +59,54 @@ const LoginAgroLabs = () => {
   });
 
   return (
-    <View style={styles.container}>
-      <View style={styles.formContainer}>
-        <Text style={styles.label}>Username</Text>
-        <Animated.View style={[styles.inputContainer, { transform: [{ translateX: shake }] }]}>
-          <TextInput
-            style={styles.input}
-            placeholder="Digite seu username"
-            placeholderTextColor="#888"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
+
+        <View style={styles.container}>
+          <Image
+            source={require('../assets/icon.png')} // Caminho para a sua logo
+            style={styles.logo}
+            resizeMode="contain"
           />
-        </Animated.View>
+          <View style={styles.formContainer}>
+            <Text style={styles.label}>Username</Text>
+            <Animated.View style={[styles.inputContainer, { transform: [{ translateX: shake }] }]}>
+              <TextInput
+                style={styles.input}
+                placeholder="Digite seu username"
+                placeholderTextColor="#888"
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+              />
+            </Animated.View>
 
-        <Text style={styles.label}>Password</Text>
-        <Animated.View style={[styles.inputContainer, { transform: [{ translateX: shake }] }]}>
-          <TextInput
-            style={styles.input}
-            placeholder="Digite sua senha"
-            placeholderTextColor="#888"
-            secureTextEntry={true}
-            value={password}
-            onChangeText={setPassword}
-          />
-        </Animated.View>
+            <Text style={styles.label}>Password</Text>
+            <Animated.View style={[styles.inputContainer, { transform: [{ translateX: shake }] }]}>
+              <TextInput
+                style={styles.input}
+                placeholder="Digite sua senha"
+                placeholderTextColor="#888"
+                secureTextEntry={true}
+                value={password}
+                onChangeText={setPassword}
+              />
+            </Animated.View>
 
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>Login</Text>
-        </TouchableOpacity>
+            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+              <LinearGradient
+                colors={[agroLabsBlueColor, darkBlueColor]}
+                style={styles.gradientButton}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.loginButtonText}>Login</Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleForgotPassword}>
-          <Text style={styles.forgotPasswordText}>Esqueci minha senha?</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+            <TouchableOpacity onPress={handleForgotPassword}>
+              <Text style={styles.forgotPasswordText}>Esqueci minha senha?</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
   );
 };
 
@@ -103,6 +117,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
+  },
+  logo: {
+    width: 150,
+    height: 150,
+    marginBottom: 30,
   },
   formContainer: {
     width: '80%',
@@ -116,22 +135,32 @@ const styles = StyleSheet.create({
   inputContainer: {
     width: '100%',
     marginBottom: 20,
+    shadowColor: shadowColor,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
   },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 12,
     fontSize: 16,
     backgroundColor: lightBlueColor, // Cor de fundo dos inputs
     color: '#333',
   },
   loginButton: {
-    backgroundColor: agroLabsBlueColor,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
+    borderRadius: 12,
+    overflow: 'hidden', // Garante que o gradiente não vaze
     marginBottom: 15,
+  },
+  gradientButton: {
+    paddingVertical: 12,
+    alignItems: 'center',
   },
   loginButtonText: {
     color: whiteColor,
