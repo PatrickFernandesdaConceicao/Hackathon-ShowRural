@@ -14,7 +14,21 @@ datasource db {
 }
 
 
-model DocumentFile {
+model Document {
   id String @id @default(uuid())
+  num_protocol String
+  num_documento String
+  expirate_date String
+  cpf_cnpj String
+  name String
+  specific_activity String
+  conditions String
+  File DocumentFile @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model DocumentFile {
+  id           String  @id @default(uuid())
   document_pdf Bytes
+
+  Document Document?
 }
