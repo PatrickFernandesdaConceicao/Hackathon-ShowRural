@@ -11,6 +11,7 @@
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",
     "@expo/vector-icons": "^14.0.2",
+    "@faker-js/faker": "^9.5.0",
     "@react-native-community/masked-view": "^0.1.11",
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/native-stack": "^7.2.0",

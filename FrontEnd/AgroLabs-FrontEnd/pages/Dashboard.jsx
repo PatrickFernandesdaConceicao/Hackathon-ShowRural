@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Dimensions, SafeAreaView, Platform } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Dimensions, SafeAreaView, Platform, TouchableOpacity } from 'react-native';
 import { faker } from '@faker-js/faker';
-import { LinearGradient } from 'expo-linear-gradient'; // Import LinearGradient
+import { LinearGradient } from 'expo-linear-gradient';
+import { FontAwesome } from '@expo/vector-icons';
 
 const primaryColor = '#0a4fd9';
 const whiteColor = '#ffffff';
@@ -9,19 +10,17 @@ const containerColor = '#eeeffb';
 const redColor = '#ff4d4d';
 const grayColor = '#888888';
 
-const screenWidth = Dimensions.get('window').width; // Get screen width
-const screenHeight = Dimensions.get('window').height; // Get screen height
+const screenWidth = Dimensions.get('window').width;
+const screenHeight = Dimensions.get('window').height;
 
-// Define responsive breakpoints
 const breakpoints = {
   small: 600,
   medium: 900,
   large: 1200,
 };
 
-// Custom hook to determine screen size
 const useScreenSize = () => {
-  const [screenSize, setScreenSize] = useState('large'); // Default to large
+  const [screenSize, setScreenSize] = useState('large');
 
   useEffect(() => {
     const handleResize = () => {
@@ -38,13 +37,10 @@ const useScreenSize = () => {
       }
     };
 
-    // Initial call
     handleResize();
 
-    // Listen for window resize events
     Dimensions.addEventListener('change', handleResize);
 
-    // Clean up the event listener
     return () => Dimensions.removeEventListener('change', handleResize);
   }, []);
 
@@ -53,71 +49,41 @@ const useScreenSize = () => {
 
 export default function Dashboard() {
   const [contractData, setContractData] = useState({
-    activeContracts: 0,
-    expiringContracts: 0,
-    expiredContracts: 0,
-    cnpjContracts: [],
-    tableData: [],
-    loading: true,
+    activeContracts: 125,
+    expiringContracts: 125,
+    expiredContracts: 125,
+    cnpjContracts: [
+      { label: 'Exemplo 01', value: 40 },
+      { label: 'Exemplo 02', value: 35 },
+      { label: 'Exemplo 03', value: 58 },
+    ],
+    tableData: Array.from({ length: 10 }, () => ({
+      cnpj: faker.string.alphanumeric(14),
+      type: faker.commerce.product(),
+      expirationDate: faker.date.future().toLocaleDateString(),
+      condition: faker.lorem.sentence(5),
+    })),
+    loading: false,
   });
 
-  const screenSize = useScreenSize(); // Use the custom hook
-
-  useEffect(() => {
-    // Simulate fetching data from an API
-    setTimeout(() => {
-      const activeContracts = faker.number.int({ min: 100, max: 200 });
-      const expiringContracts = faker.number.int({ min: 50, max: 100 });
-      const expiredContracts = faker.number.int({ min: 10, max: 30 });
-
-      const cnpjContracts = [
-        { label: 'Exemplo 01', value: faker.number.int({ min: 30, max: 60 }) },
-        { label: 'Exemplo 02', value: faker.number.int({ min: 20, max: 50 }) },
-        { label: 'Exemplo 03', value: faker.number.int({ min: 40, max: 70 }) },
-      ];
-
-      const tableData = Array.from({ length: 10 }, () => ({
-        cnpj: faker.string.alphanumeric(14),
-        type: faker.commerce.product(),
-        expirationDate: faker.date.future().toLocaleDateString(),
-        condition: faker.lorem.sentence(5),
-      }));
-
-      setContractData({
-        activeContracts,
-        expiringContracts,
-        expiredContracts,
-        cnpjContracts,
-        tableData,
-        loading: false,
-      });
-    }, 1500); // Simulate a 1.5 second loading time
-  }, []);
+  const screenSize = useScreenSize();
 
   const calculateBarWidth = (value, maxValue) => {
-    const maxWidthPercentage = 80; // Limit the bar width to 80% of the container
+    const maxWidthPercentage = 80;
     const calculatedWidth = (value / maxValue) * maxWidthPercentage;
-    return `${Math.min(calculatedWidth, maxWidthPercentage)}%`; // Ensure it doesn't exceed maxWidthPercentage
+    return `${Math.min(calculatedWidth, maxWidthPercentage)}%`;
   };
 
   const maxValue = Math.max(...contractData.cnpjContracts.map(item => item.value));
 
-  if (contractData.loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={primaryColor} />
-        <Text style={styles.loadingText}>Carregando dados...</Text>
-      </View>
-    );
-  }
-
-  // Define styles based on screen size
   const cardStyle = {
     width: screenSize === 'small' ? '100%' : screenSize === 'medium' ? '45%' : '30%',
   };
 
   const tableHeaderTextSize = screenSize === 'small' ? 12 : 14;
   const tableCellTextSize = screenSize === 'small' ? 10 : 12;
+  const tableFlexBasis = 'auto';
+  const tableConditionFlex = 2;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -127,27 +93,27 @@ export default function Dashboard() {
             <Text style={styles.cardTitle}>Contratos ativos</Text>
             <Text style={styles.cardValue}>{contractData.activeContracts}</Text>
           </View>
-          <View style={[styles.card, cardStyle]}>
+          <View style={[styles.card, cardStyle, styles.middleCardSpacing]}>
             <Text style={styles.cardTitle}>Contratos a 6 meses do vencimento</Text>
             <Text style={styles.cardValue}>{contractData.expiringContracts}</Text>
           </View>
           <View style={[styles.card, cardStyle]}>
-            <Text style={styles.cardTitle}>Contratos vencidos</Text>
-            <Text style={[styles.cardValue, { color: redColor }]}>{contractData.expiredContracts}!</Text>
+            <Text style={styles.cardTitle}>Contratos a 6 meses do vencimento</Text>
+            <Text style={styles.cardValue}>{contractData.expiredContracts}</Text>
           </View>
         </View>
 
-        <View style={styles.chartCard}>
+        <View style={[styles.chartCard, styles.sectionSpacing]}>
           <Text style={styles.chartTitle}>Contratos por CNPJ</Text>
           {contractData.cnpjContracts.map((item, index) => (
             <View style={styles.bar} key={index}>
               <Text style={styles.barLabel}>{item.label}</Text>
               <View style={styles.barContainer}>
                 <LinearGradient
-                  colors={[primaryColor, '#668ad8']} // Define gradient colors
+                  colors={[primaryColor, '#668ad8']}
                   style={[styles.barFill, { width: calculateBarWidth(item.value, maxValue) }]}
-                  start={[0, 0]} // Start point of the gradient
-                  end={[1, 0]}   // End point of the gradient
+                  start={[0, 0]}
+                  end={[1, 0]}
                 />
                 <Text style={styles.barValue}>{item.value}</Text>
               </View>
@@ -155,12 +121,18 @@ export default function Dashboard() {
           ))}
         </View>
 
-        <View style={styles.tableCard}>
+        <TouchableOpacity style={[styles.uploadButton, styles.sectionSpacing]}>
+          <FontAwesome name="upload" size={16} color={primaryColor} style={{ marginRight: 5 }} />
+          <Text style={styles.uploadButtonText}>Faça upload de um novo documento</Text>
+        </TouchableOpacity>
+
+        <View style={[styles.tableCard, styles.sectionSpacing]}>
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableHeaderTextSize }]}>CNPJ</Text>
             <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableHeaderTextSize }]}>Tipo</Text>
             <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableHeaderTextSize }]}>Vencimento</Text>
             <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: tableConditionFlex, fontSize: tableHeaderTextSize }]}>Condicionamento</Text>
+            <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 0.5, fontSize: tableHeaderTextSize, textAlign: 'center' }]}>Arquivo</Text>
           </View>
           {contractData.tableData.map((row, index) => (
             <View style={styles.tableRow} key={index}>
@@ -168,6 +140,9 @@ export default function Dashboard() {
               <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }]}>{row.type}</Text>
               <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }]}>{row.expirationDate}</Text>
               <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: tableConditionFlex, fontSize: tableCellTextSize }]}>{row.condition}</Text>
+              <TouchableOpacity style={{ flex: 0.5, alignItems: 'center' }}>
+                <FontAwesome name="download" size={20} color={primaryColor} />
+              </TouchableOpacity>
             </View>
           ))}
         </View>
@@ -179,14 +154,14 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: containerColor, // Ensure the entire screen has the background color
+    backgroundColor: containerColor,
   },
   container: {
     paddingHorizontal: 15,
     paddingTop: 15,
     paddingBottom: 30,
-    maxWidth: 1200, // Limit width on web for better readability
-    alignSelf: 'center', // Center on web, stretch on mobile
+    maxWidth: 1200,
+    alignSelf: 'center',
   },
   loadingContainer: {
     flex: 1,
@@ -203,7 +178,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 15,
-    flexWrap: 'wrap', // Allow cards to wrap to the next line
+    flexWrap: 'wrap',
   },
   card: {
     backgroundColor: whiteColor,
@@ -233,12 +208,14 @@ const styles = StyleSheet.create({
     backgroundColor: whiteColor,
     borderRadius: 10,
     padding: 15,
-    marginBottom: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 3,
+    borderColor: '#9966CC', // Border color
+    borderWidth: 1, // Border width
+    marginBottom: 20, // Adjusted margin
   },
   chartTitle: {
     fontSize: 18,
@@ -260,21 +237,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexGrow: 1,
-    position: 'relative', // Important:  This makes it the positioning context
+    position: 'relative',
   },
   barFill: {
     height: 16,
     borderRadius: 8,
-    overflow: 'hidden', // Ensure the gradient stays within the border radius
+    overflow: 'hidden',
   },
   barValue: {
     fontSize: 14,
     color: primaryColor,
-    position: 'absolute', // Absolutely position the number
-    right: 0,           // Align to the right edge
-    top: 0,             // Align to the top
-    bottom: 0,          // Align to the bottom
-    justifyContent: 'center', // Vertically center the text
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
     textAlign: 'right',
     paddingRight: 5,
   },
@@ -282,7 +259,6 @@ const styles = StyleSheet.create({
     backgroundColor: whiteColor,
     borderRadius: 10,
     padding: 15,
-    marginBottom: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -311,6 +287,37 @@ const styles = StyleSheet.create({
     color: grayColor,
     textAlign: 'left',
     flex: 1,
-    overflow: 'hidden', // Prevent text overflow
+    overflow: 'hidden',
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    backgroundColor: whiteColor,
+    borderRadius: 20, // Make it rounded
+    paddingVertical: 20, // Adjust vertical padding
+    paddingHorizontal: 20, // Adjust horizontal padding
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 3,
+    alignSelf: 'center',
+    borderWidth: 1, // Add border
+    borderColor: primaryColor, // Border color
+    width: '80%', // Adjust the width to center it
+    marginTop: 20, // Adjusted margin
+  },
+  uploadButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: primaryColor,
+  },
+  middleCardSpacing: {
+    marginLeft: 10,
+    marginRight: 10,
+  },
+  sectionSpacing: {
+    marginTop: 20, // Add spacing between sections
   },
 });
