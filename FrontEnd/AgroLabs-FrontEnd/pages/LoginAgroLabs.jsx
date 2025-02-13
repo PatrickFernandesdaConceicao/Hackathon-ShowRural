@@ -46,7 +46,7 @@ const LoginAgroLabs = () => {
     }
 
     console.log('Logging in with:', username, password);
-    navigation.navigate('CadastroDocumento');
+    navigation.navigate('Dashboard');
   };
 
   const handleForgotPassword = () => {

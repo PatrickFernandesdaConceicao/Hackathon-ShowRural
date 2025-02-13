@@ -4,6 +4,8 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import LoginAgroLabs from './pages/LoginAgroLabs';
 import CadastroDocumento from './pages/CadastroDocumento';
+import Dashboard from './pages/Dashboard';
+
 
 
 const Stack = createNativeStackNavigator();
@@ -14,6 +16,7 @@ const App = () => {
       <Stack.Navigator initialRouteName="Login">
         <Stack.Screen name="Login" component={LoginAgroLabs} />
         <Stack.Screen name="CadastroDocumento" component={CadastroDocumento} />
+        <Stack.Screen name="Dashboard" component={Dashboard} />
       </Stack.Navigator>
     </NavigationContainer>
   );

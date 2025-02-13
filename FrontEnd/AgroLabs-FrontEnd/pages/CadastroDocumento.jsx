@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, Platform, Dimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 
@@ -19,6 +19,17 @@ export default function CadastroDocumento() {
   const [dataVencimento, setDataVencimento] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
+  const [isWeb, setIsWeb] = useState(false);
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
+
+  useEffect(() => {
+    // Detecta se está rodando na web
+    setIsWeb(Platform.OS === 'web');
+
+    // Detecta se a tela é pequena (útil para dispositivos móveis)
+    const { width } = Dimensions.get('window');
+    setIsSmallScreen(width < 768); // Ajuste o valor conforme necessário
+  }, []);
 
   const handleDocumentSelection = async () => {
     try {
@@ -73,8 +84,8 @@ export default function CadastroDocumento() {
 
   return (
     <View style={[styles.container, { backgroundColor: backgroundColor }]}>
-      <View style={styles.contentContainer}>
-        <View style={[styles.formContainer, { backgroundColor: containerColor, borderRadius: 10 }]}>
+      <View style={[styles.contentContainer, isSmallScreen && { flexDirection: 'column' }]}>
+        <View style={[styles.formContainer, { backgroundColor: containerColor, borderRadius: 10, width: isSmallScreen ? '100%' : '45%', marginRight: isSmallScreen ? 0 : 20 }]}>
           <Text style={[styles.label, { color: darkBlueColor }]}>Digite seu nome</Text>
           <TextInput
             style={[styles.input, { backgroundColor: whiteColor, borderColor: borderColor, borderRadius: 5, color: darkBlueColor }]}
@@ -118,7 +129,7 @@ export default function CadastroDocumento() {
           </View>
         </View>
 
-        <View style={[styles.uploadContainer, { backgroundColor: containerColor, borderRadius: 10 }]}>
+        <View style={[styles.uploadContainer, { backgroundColor: containerColor, borderRadius: 10, width: isSmallScreen ? '100%' : '45%' }]}>
           <Text style={[styles.uploadTitle, { color: darkBlueColor }]}>Faça upload do documento:</Text>
           <TouchableOpacity style={[styles.uploadButton, { backgroundColor: whiteColor, borderColor: borderColor, borderStyle: 'dashed', borderRadius: 10 }] } onPress={handleDocumentSelection}>
             <MaterialCommunityIcons name="upload" size={24} color={borderColor} />
