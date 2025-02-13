@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Dimensions, SafeAreaView } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Dimensions, SafeAreaView, Platform } from 'react-native';
 import { faker } from '@faker-js/faker';
 
 const primaryColor = '#0a4fd9';
@@ -10,6 +10,12 @@ const grayColor = '#888888';
 
 const screenWidth = Dimensions.get('window').width; // Get screen width
 const screenHeight = Dimensions.get('window').height; // Get screen height
+
+// Define a responsive breakpoint
+const isWeb = Platform.OS === 'web';
+const cardWidthPercentage = isWeb ? '30%' : '100%'; // Adjust card width for web and mobile
+const tableFlexBasis = isWeb ? '20%' : 'auto'; // Adjust table column width for web and mobile
+const tableConditionFlex = isWeb ? 3 : 1; // Adjust table column width for web and mobile
 
 export default function Dashboard() {
   const [contractData, setContractData] = useState({
@@ -73,15 +79,15 @@ export default function Dashboard() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.row}>
-          <View style={styles.card}>
+          <View style={[styles.card, { width: cardWidthPercentage }]}>
             <Text style={styles.cardTitle}>Contratos ativos</Text>
             <Text style={styles.cardValue}>{contractData.activeContracts}</Text>
           </View>
-          <View style={styles.card}>
+          <View style={[styles.card, { width: cardWidthPercentage }]}>
             <Text style={styles.cardTitle}>Contratos a 6 meses do vencimento</Text>
             <Text style={styles.cardValue}>{contractData.expiringContracts}</Text>
           </View>
-          <View style={styles.card}>
+          <View style={[styles.card, { width: cardWidthPercentage }]}>
             <Text style={styles.cardTitle}>Contratos vencidos</Text>
             <Text style={[styles.cardValue, { color: redColor }]}>{contractData.expiredContracts}!</Text>
           </View>
@@ -100,17 +106,17 @@ export default function Dashboard() {
 
         <View style={styles.tableCard}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderText, { flex: 2 }]}>CNPJ</Text>
-            <Text style={[styles.tableHeaderText, { flex: 2 }]}>Tipo</Text>
-            <Text style={[styles.tableHeaderText, { flex: 2 }]}>Vencimento</Text>
-            <Text style={[styles.tableHeaderText, { flex: 3 }]}>Condicionamento</Text>
+            <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1 }]}>CNPJ</Text>
+            <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1 }]}>Tipo</Text>
+            <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1 }]}>Vencimento</Text>
+            <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: tableConditionFlex }]}>Condicionamento</Text>
           </View>
           {contractData.tableData.map((row, index) => (
             <View style={styles.tableRow} key={index}>
-              <Text style={[styles.tableCell, { flex: 2 }]}>{row.cnpj}</Text>
-              <Text style={[styles.tableCell, { flex: 2 }]}>{row.type}</Text>
-              <Text style={[styles.tableCell, { flex: 2 }]}>{row.expirationDate}</Text>
-              <Text style={[styles.tableCell, { flex: 3 }]}>{row.condition}</Text>
+              <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1 }]}>{row.cnpj}</Text>
+              <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1 }]}>{row.type}</Text>
+              <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1 }]}>{row.expirationDate}</Text>
+              <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: tableConditionFlex }]}>{row.condition}</Text>
             </View>
           ))}
         </View>
@@ -128,8 +134,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingTop: 15,
     paddingBottom: 30,
-    // maxWidth: screenWidth - 30, //  Removed maxWidth to allow full width cards
-    // alignSelf: 'center', // Removed alignSelf to allow full width cards
+    maxWidth: isWeb ? 1200 : '100%', // Limit width on web for better readability
+    alignSelf: isWeb ? 'center' : 'stretch', // Center on web, stretch on mobile
   },
   loadingContainer: {
     flex: 1,
@@ -143,7 +149,7 @@ const styles = StyleSheet.create({
     color: grayColor,
   },
   row: {
-    flexDirection: 'row',
+    flexDirection: isWeb ? 'row' : 'column', // Horizontal on web, vertical on mobile
     justifyContent: 'space-between',
     marginBottom: 15,
   },
@@ -151,7 +157,7 @@ const styles = StyleSheet.create({
     backgroundColor: whiteColor,
     borderRadius: 10,
     padding: 15,
-    width: '32%',
+    marginBottom: isWeb ? 0 : 15, // Remove bottom margin on web
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -160,14 +166,14 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardTitle: {
-    fontSize: 14,
+    fontSize: isWeb ? 16 : 14, // Adjust font size for web
     fontWeight: 'bold',
     color: primaryColor,
     marginBottom: 5,
     textAlign: 'center',
   },
   cardValue: {
-    fontSize: 28,
+    fontSize: isWeb ? 32 : 28, // Adjust font size for web
     fontWeight: 'bold',
     color: primaryColor,
   },
@@ -183,7 +189,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   chartTitle: {
-    fontSize: 16,
+    fontSize: isWeb ? 18 : 16, // Adjust font size for web
     fontWeight: 'bold',
     color: primaryColor,
     marginBottom: 10,
@@ -194,7 +200,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   barLabel: {
-    fontSize: 12,
+    fontSize: isWeb ? 14 : 12, // Adjust font size for web
     color: primaryColor,
     width: 70,
   },
@@ -206,7 +212,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   barValue: {
-    fontSize: 12,
+    fontSize: isWeb ? 14 : 12, // Adjust font size for web
     color: primaryColor,
     marginLeft: 5,
     width: 35,
@@ -229,7 +235,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tableHeaderText: {
-    fontSize: 14,
+    fontSize: isWeb ? 16 : 14, // Adjust font size for web
     fontWeight: 'bold',
     color: primaryColor,
     textAlign: 'left',
@@ -243,7 +249,7 @@ const styles = StyleSheet.create({
     borderBottomColor: containerColor,
   },
   tableCell: {
-    fontSize: 12,
+    fontSize: isWeb ? 14 : 12, // Adjust font size for web
     color: grayColor,
     textAlign: 'left',
     flex: 1,
