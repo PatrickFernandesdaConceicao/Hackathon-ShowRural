@@ -1,5 +1,4 @@
 import { PrismaDB } from "../prisma/client";
-import { DocumentPdF } from "../entities/documentPdf";
 import { Document } from "@prisma/client";
 
 export class DocumentRepositorie {
