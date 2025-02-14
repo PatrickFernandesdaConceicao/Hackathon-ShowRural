@@ -18,3 +18,8 @@ model DocumentFile {
   id String @id @default(uuid())
   document_pdf Bytes
 }
+
+model DocumentOutorga {
+  id String @id @default(uuid())
+  document_pdf Bytes
+}
