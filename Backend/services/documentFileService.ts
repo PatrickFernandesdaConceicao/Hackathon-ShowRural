@@ -3,6 +3,8 @@ import { PrismaDB } from "../prisma/client";
 import pdf from "pdf-parse";
 import { DocumentFileRepositorie } from "../repositorie/documentFileRepositorie";
 import { DocumentFile } from "../entities/documentFile";
+import { DocumentRepositorie } from "../repositorie/documentRepositorie";
+import { Document } from "@prisma/client";
 
 export class DocumentFileService {
     
@@ -18,16 +20,20 @@ export class DocumentFileService {
             // Extrai texto do PDF
             const pdfData = await pdf(buffer);
             const extractedText = pdfData.text;
+            console.log(extractedText);
 
             // Extrai as informações relevantes
-            const extractedData = extractRelevantInfo(extractedText);
+            const extractedData = extractRelevantInfo(extractedText) as Omit<Omit<Document, "id">, "title">;
+            console.log(extractedData)
 
-            console.log(extractedText)
-            const newDocument = await DocumentFileRepositorie.create(data);
+            const newDocumentFile = await DocumentFileRepositorie.create(data);
+            const newDocument = await DocumentRepositorie.create({
+                ...extractedData,
+                id: newDocumentFile.id,
+                title: `${extractedData.corporate_reason} - ${extractedData.cpf_cnpj}`
+            });
+
             return newDocument
-            console.log(extractedData); // Exibe os dados extraídos
-
-            return extractedData;
         } catch (error) {
             console.error("Erro ao processar PDF:", error);
             throw new Error("Falha ao processar o arquivo PDF.");
@@ -50,13 +56,13 @@ function extractRelevantInfo(text: string) {
 
     // Objeto para armazenar os dados extraídos
     const extractedData: { [key: string]: string | null } = {
-        numeroProtocolo: null,
-        numeroDocumento: null,
-        validadeLicenca: null,
-        cnpjCpf: null,
-        razaoSocial: null,
-        atividadeEspecifica: null,
-        condicionantes: null,
+        num_protocol: null,
+        num_documento: null,
+        expirate_date: null,
+        cpf_cnpj: null,
+        corporate_reason: null,
+        specific_activity: null,
+        conditions: null,
     };
 
     // Regex para capturar o número do protocolo (padrão: "16.986.636-8")
@@ -73,52 +79,64 @@ function extractRelevantInfo(text: string) {
         // Captura o número do protocolo
         const protocoloMatch = line.match(protocoloRegex);
         if (protocoloMatch) {
-            extractedData.numeroProtocolo = protocoloMatch[0];
+            extractedData.num_protocol = protocoloMatch[0];
         }
 
         // Captura o número do documento
         const documentoMatch = line.match(documentoRegex);
         if (documentoMatch) {
-            extractedData.numeroDocumento = documentoMatch[0];
+            extractedData.num_documento = documentoMatch[0];
         }
 
         // Captura o CNPJ no formato 76.09*.***/****-**
         const cnpjMatch = line.match(cnpjRegex);
         if (cnpjMatch) {
             // Remove qualquer texto adicional após o CNPJ
-            extractedData.cnpjCpf = cnpjMatch[0];
+            extractedData.cpf_cnpj = cnpjMatch[0];
         }
 
         if (line.startsWith("Validade da Licença")) {
             // A próxima linha contém o valor da validade da licença
-            extractedData.validadeLicenca = lines[i + 1].trim();
+            extractedData.expirate_date = lines[i + 1].trim();
         } else if (line.startsWith("1. IDENTIFICAÇÃO DO EMPREENDEDOR")) {
             // A próxima linha contém o CNPJ/CPF e a razão social
             const identificacaoLine = lines[i + 1].trim();
             // Se o CNPJ não foi capturado anteriormente, tenta capturar aqui
-            if (!extractedData.cnpjCpf) {
+            if (!extractedData.cpf_cnpj) {
                 const cnpjMatch = identificacaoLine.match(cnpjRegex);
                 if (cnpjMatch) {
                     // Remove qualquer texto adicional após o CNPJ
-                    extractedData.cnpjCpf = cnpjMatch[0];
+                    extractedData.cpf_cnpj = cnpjMatch[0];
                 }
             }
             // Captura a razão social (tudo após o CNPJ)
-            extractedData.razaoSocial = identificacaoLine.replace(cnpjRegex, '').trim();
+            extractedData.corporate_reason = identificacaoLine.replace(cnpjRegex, '').trim();
         } else if (line.startsWith("Atividade Específica")) {
             // A próxima linha contém o valor da atividade específica
-            extractedData.atividadeEspecifica = lines[i + 1].trim();
-        } else if (line.startsWith("4. CONDICIONANTES")) {
+            extractedData.specific_activity = lines[i + 1].trim();
+        } else if (
+            line.startsWith("1. CONDICIONANTES") ||
+            line.startsWith("2. CONDICIONANTES") ||
+            line.startsWith("3. CONDICIONANTES") ||
+            line.startsWith("4. CONDICIONANTES") ||
+            line.startsWith("5. CONDICIONANTES") ||
+            line.startsWith("6. CONDICIONANTES") ||
+            line.startsWith("7. CONDICIONANTES") ||
+            line.startsWith("8. CONDICIONANTES") ||
+            line.startsWith("9. CONDICIONANTES") ||
+            line.startsWith("10. CONDICIONANTES")
+        ) {
+            console.log("OI")
             // Captura todas as linhas após "4. CONDICIONANTES" até o próximo título ou final do texto
-            let condicionantes = [];
+            let conditions = [];
             for (let j = i + 1; j < lines.length; j++) {
                 const currentLine = lines[j].trim();
                 if (currentLine.startsWith("Assinatura")) {
                     break; // Para ao encontrar "Assinatura" ou o próximo título
                 }
-                condicionantes.push(currentLine);
+                conditions.push(currentLine);
             }
-            extractedData.condicionantes = condicionantes
+            extractedData.conditions = conditions
                 .filter(line => !line.includes('EM BRANCO')) // Remove linhas com "EM BRANCO"
                 .join('\n') // Junta as linhas em um único texto
                 .trim(); // Remove espaços extras

@@ -30,14 +30,11 @@ model Document {
 model DocumentFile {
   id           String  @id @default(uuid())
   document_pdf Bytes
-<<<<<<< HEAD
 
   Document Document?
-=======
 }
 
 model DocumentOutorga {
   id String @id @default(uuid())
   document_pdf Bytes
->>>>>>> 83f6b548b6b31a7a9e2a1b1785eebf08d1bcaf87
 }

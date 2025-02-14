@@ -5,13 +5,12 @@ export class EmailProvider {
     private static transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
-            user: 'leonardo.valerio@escola.pr.gov.br',
-            pass: 'monograves',
+            user: 'deathboooom@gmail.com',
+            pass: process.env.APP_PAS,
         },
     });
 
     static async sendEmail(props: {
-        from: string,
         to: string,
         subject: string,
         text: string,
@@ -19,7 +18,7 @@ export class EmailProvider {
         corpo: string
     }) {
         const mailOptions = {
-            from: props.from,
+            from: "deathboooom@gmail.com",
             to: props.to,
             subject: props.subject,
             text: props.text,

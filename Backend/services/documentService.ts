@@ -25,4 +25,10 @@ export class DocumentService {
 
         return document;
     }
+
+    static async findAll() {
+        const document = await DocumentRepositorie.findAll();
+
+        return document;
+    }
 }

@@ -6,7 +6,7 @@ export const getAll = async (req: Request, res: Response) => {
 
     const buffer = req.file!.buffer;
 
-    const users = DocumentOutorgaService.getAll({document_pdf: buffer});
+    const users = DocumentOutorgaService.getAll({documentOutorga_pdf: buffer});
 
     res.send(users);
 }

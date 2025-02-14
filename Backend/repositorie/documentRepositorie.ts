@@ -20,4 +20,14 @@ export class DocumentRepositorie {
 
         return document;
     }
+
+    static async findAll(): Promise<Omit<Document, "conditions">[]> {
+        const documents = await PrismaDB.prisma.document.findMany({
+            omit: {
+                conditions: true
+            }
+        });
+
+        return documents;
+    }
 }

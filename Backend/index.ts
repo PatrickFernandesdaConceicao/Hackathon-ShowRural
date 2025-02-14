@@ -9,9 +9,7 @@ app.use(routes)
 
 const PORT = "3000";
 
-app.listen(PORT, () => {
-    listenNotifications();
-    // console.log(new Date().toISOString().split('T')[0]);
+app.listen(PORT, async () => {
     console.log("Rodando na porta: ", PORT)
-
+    await listenNotifications();
 });
