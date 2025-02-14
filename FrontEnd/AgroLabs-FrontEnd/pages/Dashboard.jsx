@@ -3,10 +3,9 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import * as Permissions from 'expo-permissions';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Dimensions, Image, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { Alert, Dimensions, Image, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from 'react-native';
 
 // Cores
 const primaryColor = '#0a4fd9';
@@ -110,30 +109,29 @@ const DashboardScreen = ({ documents, calculateBarWidth, maxValue, styles, isWeb
     return documents.filter(doc => new Date(doc.expirate_date) < new Date()).length;
   }, [documents]);
 
-  // Contratos por Razão Social (Substituindo os dados de exemplo)
-  const contractsByCorporateReason = useMemo(() => {
+  // Contratos por CNPJ (Substituindo os dados de exemplo)
+  const contractsByCNPJ = useMemo(() => {
     if (!documents || !Array.isArray(documents)) {
       return [];
     }
 
     const counts = {};
     documents.forEach(doc => {
-      const reason = doc.corporate_reason || 'Sem Razão Social';
-      counts[reason] = (counts[reason] || 0) + 1;
+      const cnpj = doc.cpf_cnpj || 'Sem CNPJ'; // Use cpf_cnpj instead of corporate_reason
+      counts[cnpj] = (counts[cnpj] || 0) + 1;
     });
 
     return Object.entries(counts).map(([label, value]) => ({ label, value }));
   }, [documents]);
 
-  const maxReasonValue = useMemo(() => {
-    return Math.max(...contractsByCorporateReason.map(item => item.value), 0);
-  }, [contractsByCorporateReason]);
+  const maxCNPJValue = useMemo(() => {
+    return Math.max(...contractsByCNPJ.map(item => item.value), 0);
+  }, [contractsByCNPJ]);
 
 
   return (
     <View>
       <View style={styles.searchContainer}>
-        <TextInput style={styles.searchInput} placeholder="Pesquisar CNPJ" />
         <TextInput style={styles.searchInput} placeholder="Pesquisar Atividade específica" />
       </View>
       <View style={styles.row}>
@@ -142,7 +140,7 @@ const DashboardScreen = ({ documents, calculateBarWidth, maxValue, styles, isWeb
           <Text style={[styles.cardValue, isWeb && styles.cardValueWeb]}>{activeContracts}</Text>
         </View>
         <View style={[styles.card, cardStyle, styles.middleCardSpacing]}>
-          <Text style={[styles.cardTitle, isWeb && styles.cardTitleWeb]}>Licenças a 6 meses do vencimento</Text>
+          <Text style={[styles.cardTitle, isWeb && styles.cardTitleWeb]}>Licenças a 6 meses </Text>
           <Text style={[styles.cardValue, isWeb && styles.cardValueWeb]}>{expiringContracts}</Text>
         </View>
         <View style={[styles.card, cardStyle]}>
@@ -152,23 +150,25 @@ const DashboardScreen = ({ documents, calculateBarWidth, maxValue, styles, isWeb
       </View>
 
       {/* Novos cards para exibir a contagem de CNPJs e contratos */}
-      <View style={styles.row}>
+      {/* <View style={styles.row}>
         <View style={[styles.card, cardStyle]}>
           <Text style={[styles.cardTitle, isWeb && styles.cardTitleWeb]}>Total de Contratos</Text>
           <Text style={[styles.cardValue, isWeb && styles.cardValueWeb]}>{totalContracts}</Text>
         </View>
-      </View>
+      </View> */}
 
 
       <View style={[styles.chartCard, styles.sectionSpacing]}>
-        <Text style={[styles.chartTitle, isWeb && styles.chartTitleWeb]}>Contratos por Razão Social</Text>
-        {contractsByCorporateReason.map((item, index) => (
+        <Text style={[styles.chartTitle, isWeb && styles.chartTitleWeb]}>CNPJ </Text>
+        {contractsByCNPJ.map((item, index) => (
           <View style={styles.bar} key={index}>
-            <Text style={[styles.barLabel, isWeb && styles.barLabelWeb]}>{item.label}</Text>
+            <View style={styles.barLabelContainer}>
+              <Text style={[styles.barLabel, isWeb && styles.barLabelWeb]}>{item.label}</Text>
+            </View>
             <View style={styles.barContainer}>
               <LinearGradient
                 colors={[primaryColor, '#668ad8']}
-                style={[styles.barFill, { width: calculateBarWidth(item.value, maxReasonValue) }]}
+                style={[styles.barFill, { width: calculateBarWidth(item.value, maxCNPJValue) }]}
                 start={[0, 0]}
                 end={[1, 0]}
               />
@@ -193,15 +193,14 @@ const DocumentsScreen = ({ filterValue, setFilterValue, filteredTableData, style
     setModalVisible(false);
   };
 
-  const tableHeaderTextSize = useMemo(() => isSmallScreen ? 12 : 14, [isSmallScreen]);
-  const tableCellTextSize = useMemo(() => isSmallScreen ? 10 : 12, [isSmallScreen]);
-  const tableFlexBasis = 'auto';
-  const tableConditionFlex = 2;
+  const tableHeaderTextSize = useMemo(() => isSmallScreen ? 16 : 20, [isSmallScreen]);
+  const tableCellTextSize = useMemo(() => isSmallScreen ? 14 : 16, [isSmallScreen]);
+
+  const tableFlexBasis = useMemo(() => isSmallScreen ? '25%' : '20%', [isSmallScreen]);
 
   return (
     <View>
       <View style={styles.searchContainer}>
-        <TextInput style={styles.searchInput} placeholder="Pesquisar CNPJ" />
         <TextInput style={styles.searchInput} placeholder="Pesquisar Atividade específica" />
       </View>
       <View style={[styles.filterUploadContainer, styles.sectionSpacing]}>
@@ -284,15 +283,16 @@ const DocumentsScreen = ({ filterValue, setFilterValue, filteredTableData, style
 
       <View style={[styles.tableCard, styles.sectionSpacing]}>
         <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableHeaderTextSize }, isWeb && styles.tableHeaderTextWeb]}>CNPJ</Text>
-          <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableHeaderTextSize }, isWeb && styles.tableHeaderTextWeb]}>Vencimento</Text>
-          <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 0.5, fontSize: tableHeaderTextSize, textAlign: 'center' }, isWeb && styles.tableHeaderTextWeb]}>Arquivo</Text>
-          <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 0.2, fontSize: tableHeaderTextSize, textAlign: 'center' }, isWeb && styles.tableHeaderTextWeb]}></Text>
+          <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1.5, fontSize: tableHeaderTextSize }, isWeb && styles.tableHeaderTextWeb]}>CNPJ</Text>
+          <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1.5, fontSize: tableHeaderTextSize }, isWeb && styles.tableHeaderTextWeb]}>Número do Documento</Text>
+          <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1.5, fontSize: tableHeaderTextSize }, isWeb && styles.tableHeaderTextWeb]}>Vencimento</Text>
+          <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1.5, fontSize: tableHeaderTextSize, textAlign: 'flex-end' }, isWeb && styles.tableHeaderTextWeb]}></Text>
         </View>
         {filteredTableData.map((row, index) => (
           <View style={styles.tableRow} key={index}>
-            <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{row.cpf_cnpj}</Text>
-            <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{new Date(row.expirate_date).toLocaleDateString("pt-BR", {
+            <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1.5, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{row.cpf_cnpj}</Text>
+            <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1.5, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{row.num_documento}</Text>
+            <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1.5, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{new Date(row.expirate_date).toLocaleDateString("pt-BR", {
               day: "2-digit",
               month: "2-digit",
               year: "numeric",
@@ -300,7 +300,7 @@ const DocumentsScreen = ({ filterValue, setFilterValue, filteredTableData, style
             <TouchableOpacity style={styles.downloadButton} onPress={() => handleDownload(row)}>
               <MaterialIcons name="file-download" size={isSmallScreen ? 20 : 24} color={whiteColor} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.plusButton} onPress={() => onPlusPress(row)}>
+            <TouchableOpacity style={[styles.plusButton, styles.plusButtonSpacing]} onPress={() => onPlusPress(row)}>
               <Text style={styles.plusButtonText}>+</Text>
             </TouchableOpacity>
           </View>
@@ -443,7 +443,7 @@ const UploadDocumentModal = ({ visible, onClose, onUpload, renewalAlertDate, set
               </>
             ) : (
               <>
-                <MaterialIcons name="upload-file" size={24} color={primaryColor} style={{ marginRight: 5 }} />
+                <MaterialIcons name="file-upload" size={24} color={primaryColor} style={{ marginRight: 5 }} />
                 <Text style={styles.uploadButtonTextModal}>Insira o documento</Text>
               </>
             )}
@@ -495,21 +495,21 @@ export default function Dashboard() {
   const [documents, setDocuments] = useState([])
   const [filterValue, setFilterValue] = useState('TODOS');
   const [filteredTableData, setFilteredTableData] = useState([]);
-  const [activeTab, setActiveTab] = useState('documents');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const isWeb = Platform.OS === 'web';
   const screenSize = useScreenSize();
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedDocumentForDetails, setSelectedDocumentForDetails] = useState(null);
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
-  const [renewalAlertDate, setRenewalAlertDate] = useState(null);
+  const [renewalAlertDate, setRenewalAlertDate] = useState(new Date()); // Initialize with a default value
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [uploadedDocument, setUploadedDocument] = useState(null);
+  const [selectedDocument, setSelectedDocument] = useState(null); // Changed to selectedDocument for consistency
 
   const isSmallScreen = useMemo(() => {
     return screenSize === 'small' || screenSize === 'medium';
   }, [screenSize]);
 
-  const applyFilter = (documents) => {
+  const applyFilter = useCallback((documents) => {
     let filteredData = documents;
 
     if (filterValue === '6 Meses') {
@@ -528,18 +528,26 @@ export default function Dashboard() {
     }
 
     setFilteredTableData(filteredData);
-  };
+  }, [filterValue]);
 
   useEffect(() => {
-    fetch("http://hackathon-showrural-backend-production.up.railway.app/documents/", {
-      method: "GET"
-    }).then((result) => {
-      return result.json();
-    }).then((documents) => {
-      setDocuments(documents);
-      applyFilter(documents);
-    })
-  }, []);
+    const fetchDocuments = async () => {
+      try {
+        const response = await fetch("http://hackathon-showrural-backend-production.up.railway.app/documents/");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const documents = await response.json();
+        setDocuments(documents);
+        applyFilter(documents);
+      } catch (error) {
+        console.error("Failed to fetch documents:", error);
+        Alert.alert('Erro', 'Falha ao carregar os documentos.');
+      }
+    };
+
+    fetchDocuments();
+  }, [applyFilter]);
 
 
   const calculateBarWidth = (value, maxValue) => {
@@ -554,8 +562,8 @@ export default function Dashboard() {
 
   const handleCloseUploadModal = () => {
     setUploadModalVisible(false);
-    setRenewalAlertDate(null);
-    setUploadedDocument(null);
+    setRenewalAlertDate(new Date()); // Reset to default value
+    setSelectedDocument(null);
     setShowDatePicker(false);
   };
 
@@ -579,14 +587,22 @@ export default function Dashboard() {
       console.log("Upload successful:", result);
 
       // Refresh documents after successful upload
-      fetch("http://hackathon-showrural-backend-production.up.railway.app/documents/", {
-        method: "GET"
-      }).then((result) => {
-        return result.json();
-      }).then((documents) => {
-        setDocuments(documents);
-        applyFilter(documents);
-      })
+      const fetchDocuments = async () => {
+        try {
+          const response = await fetch("http://hackathon-showrural-backend-production.up.railway.app/documents/");
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const documents = await response.json();
+          setDocuments(documents);
+          applyFilter(documents);
+        } catch (error) {
+          console.error("Failed to fetch documents:", error);
+          Alert.alert('Erro', 'Falha ao carregar os documentos.');
+        }
+      };
+
+      fetchDocuments();
 
     } catch (error) {
       console.error("Upload failed:", error);
@@ -603,7 +619,12 @@ export default function Dashboard() {
     setDetailModalVisible(false);
   };
 
-  const handleDownload = async (rowData) => {
+  const handleDownload = useCallback(async (rowData) => {
+    if (!isWeb) {
+      Alert.alert('Download', 'Download não suportado nesta plataforma.');
+      return;
+    }
+  
     try {
       const documentId = rowData.id;
       if (!documentId) {
@@ -611,68 +632,78 @@ export default function Dashboard() {
         return;
       }
   
+      // Show loading state to user
+      Alert.alert('Download', 'Iniciando download...');
+  
       const response = await fetch(`http://hackathon-showrural-backend-production.up.railway.app/documentFiles/${documentId}`);
+      
       if (!response.ok) {
-        Alert.alert('Erro', `Falha ao buscar o documento (Status: ${response.status}).`);
-        return;
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
   
       const documentData = await response.json();
+      console.log(documentData)
+
       if (!documentData || !documentData.file) {
-        Alert.alert('Erro', 'Documento não encontrado ou sem conteúdo.');
-        return;
+        throw new Error('Documento não encontrado ou sem conteúdo.');
       }
   
+      // Get file info
       const filename = documentData.name || 'documento.pdf';
-      const byteCharacters = atob(documentData.file);
+      const base64Data = documentData.file;
+      const fileType = documentData.type || 'application/pdf';
+  
+      // Create blob from base64
+      const byteCharacters = atob(base64Data);
       const byteNumbers = new Array(byteCharacters.length);
+      
       for (let i = 0; i < byteCharacters.length; i++) {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
+      
       const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: documentData.type || 'application/pdf' });
-      const blobURL = URL.createObjectURL(blob);
+      const blob = new Blob([byteArray], { type: fileType });
   
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = blobURL;
+      link.href = url;
       link.download = filename;
+      
+      // Trigger download
       document.body.appendChild(link);
       link.click();
+      
+      // Cleanup
       document.body.removeChild(link);
-      URL.revokeObjectURL(blobURL);
+      window.URL.revokeObjectURL(url);
   
-      Alert.alert('Sucesso', 'Download iniciado.');
     } catch (error) {
-      Alert.alert('Erro', 'Ocorreu um erro ao baixar o documento.');
+      console.error("Download failed:", error);
+      Alert.alert('Erro', `Falha ao baixar o documento: ${error.message}`);
     }
-  };
-  
+  }, [isWeb]);
 
   const maxValue = useMemo(() => {
-    const contractsByCorporateReason = () => {
+    const contractsByCNPJ = () => {
       if (!documents || !Array.isArray(documents)) {
         return [];
       }
 
       const counts = {};
       documents.forEach(doc => {
-        const reason = doc.corporate_reason || 'Sem Razão Social';
-        counts[reason] = (counts[reason] || 0) + 1;
+        const cnpj = doc.cpf_cnpj || 'Sem CNPJ'; // Use cpf_cnpj instead of corporate_reason
+        counts[cnpj] = (counts[cnpj] || 0) + 1;
       });
 
       return Object.entries(counts).map(([label, value]) => ({ label, value }));
     };
-    return Math.max(...contractsByCorporateReason().map(item => item.value), 0);
+    return Math.max(...contractsByCNPJ().map(item => item.value), 0);
   }, [documents]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.blueBar}>
-        <Image
-          source={require('../assets/icon.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
         <View style={styles.tabButtonsContainer}>
           <TouchableOpacity onPress={() => setActiveTab('dashboard')} style={styles.blueBarButton}>
             <Text style={[styles.blueBarText, activeTab === 'dashboard' && styles.activeTabText, isWeb && styles.blueBarTextWeb]}>DASHBOARD</Text>
@@ -682,9 +713,11 @@ export default function Dashboard() {
             <Text style={[styles.blueBarText, activeTab === 'documents' && styles.activeTabText, isWeb && styles.blueBarTextWeb]}>DOCUMENTOS</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.uploadIconContainer} onPress={handleDocumentUpload}>
-          <MaterialIcons name="upload-file" size={30} color={whiteColor} />
-        </TouchableOpacity>
+        <View style={styles.uploadIconContainer}>
+          <TouchableOpacity onPress={handleDocumentUpload}>
+            <MaterialIcons name="upload-file" size={30} color={whiteColor} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.container}>
@@ -728,25 +761,25 @@ export default function Dashboard() {
         showDatePicker={showDatePicker}
         setShowDatePicker={setShowDatePicker}
         isWeb={isWeb}
-        selectedDocument={uploadedDocument}
-        setSelectedDocument={setUploadedDocument}
+        selectedDocument={selectedDocument}
+        setSelectedDocument={setSelectedDocument}
       />
     </SafeAreaView>
   );
 }
-
-// Estilos
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: containerColor, // Cor de fundo mais clara
+    backgroundColor: containerColor,
   },
   container: {
-    paddingHorizontal: 20, // Aumenta o padding horizontal
-    paddingTop: 20, // Aumenta o padding top
-    paddingBottom: 40, // Aumenta o padding bottom
+    flexGrow: 1, // Allow content to grow and scroll
+    paddingHorizontal: '5%', // Use percentage for responsiveness
+    paddingTop: 20,
+    paddingBottom: 40,
     maxWidth: 1200,
-    alignSelf: 'center',
+    alignSelf: 'center', // Center the content horizontally
+    width: '100%', // Take up full width of the screen
   },
   loadingContainer: {
     flex: 1,
@@ -762,120 +795,134 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20, // Aumenta o margin bottom
+    marginBottom: 20,
     flexWrap: 'wrap',
-    gap: 16, // Adiciona gap entre os elementos
+    gap: 16,
   },
   card: {
     backgroundColor: whiteColor,
-    borderRadius: 12, // Aumenta o arredondamento
-    padding: 20, // Aumenta o padding
-    marginBottom: 20, // Aumenta o margin bottom
+    width: '100%', // Cards take full width
+    height: 120,
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 20,
     alignItems: 'center',
-    elevation: 0, // Remove elevation (substitui por boxShadow)
-    shadowColor: '#000', // Adiciona shadowColor
+    elevation: 0,
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.05, // Ajusta a opacidade da sombra
-    shadowRadius: 4, // Ajusta o raio da sombra
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   cardTitle: {
-    fontSize: 18, // Aumenta o tamanho da fonte
-    fontWeight: '600', // Usa um peso de fonte mais leve
+    width: '100%',
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: 'bold',
     color: primaryColor,
-    marginBottom: 12, // Aumenta o margin bottom
+    marginBottom: 12,
     textAlign: 'center',
   },
   cardValue: {
-    fontSize: 32, // Aumenta o tamanho da fonte
-    fontWeight: '600', // Usa um peso de fonte mais leve
+    fontSize: 32,
+    fontWeight: '600',
     color: primaryColor,
   },
   chartCard: {
     backgroundColor: whiteColor,
-    borderRadius: 12, // Aumenta o arredondamento
-    padding: 20, // Aumenta o padding
-    elevation: 0, // Remove elevation (substitui por boxShadow)
-    shadowColor: '#000', // Adiciona shadowColor
+    borderRadius: 12,
+    padding: 20,
+    elevation: 0,
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.05, // Ajusta a opacidade da sombra
-    shadowRadius: 4, // Ajusta o raio da sombra
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     borderColor: lightGrayColor,
     borderWidth: 1,
-    marginBottom: 24, // Aumenta o margin bottom
+    marginBottom: 24,
+    width: '100%', // Chart card takes full width
   },
   chartTitle: {
-    fontSize: 20, // Aumenta o tamanho da fonte
-    fontWeight: '600', // Usa um peso de fonte mais leve
+    fontSize: 20,
+    fontWeight: '600',
     color: primaryColor,
-    marginBottom: 16, // Aumenta o margin bottom
+    marginBottom: 16,
   },
   bar: {
     flexDirection: 'row',
+    marginBottom: 8,
     alignItems: 'center',
-    marginBottom: 8, // Aumenta o margin bottom
+    justifyContent: 'space-between',
+  },
+  barLabelContainer: {
+    flex: 1,
+    marginRight: 10,
   },
   barLabel: {
-    fontSize: 16, // Aumenta o tamanho da fonte
+    fontSize: 16,
     color: primaryColor,
-    width: 80, // Aumenta a largura
+    textAlign: 'left',
   },
   barContainer: {
+    flex: 2,
     flexDirection: 'row',
     alignItems: 'center',
-    flexGrow: 1,
+    height: 18,
     position: 'relative',
   },
   barFill: {
-    height: 18, // Aumenta a altura
-    borderRadius: 9, // Ajusta o arredondamento
+    height: 18,
+    backgroundColor: primaryColor,
+    borderRadius: 9,
     overflow: 'hidden',
+    position: 'absolute',
+    left: '5mm', // Desloca a barra 0.5cm para a direita
   },
   barValue: {
-    fontSize: 16, // Aumenta o tamanho da fonte
+    fontSize: 16,
     color: primaryColor,
     position: 'absolute',
     right: 0,
     top: 0,
     bottom: 0,
     justifyContent: 'center',
-    textAlign: 'right',
-    paddingRight: 8, //Aumenta o padding right
+    marginLeft: 5,
   },
   tableCard: {
     backgroundColor: whiteColor,
-    borderRadius: 12, // Aumenta o arredondamento
-    padding: 20, // Aumenta o padding
-    elevation: 0, // Remove elevation (substitui por boxShadow)
-    shadowColor: '#000', // Adiciona shadowColor
+    borderRadius: 12,
+    padding: 15, // Reduced padding
+    elevation: 0,
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.05, // Ajusta a opacidade da sombra
-    shadowRadius: 4, // Ajusta o raio da sombra
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    width: '100%', // Table card takes full width
   },
   tableHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12, // Aumenta o margin bottom
+    marginBottom: 8, // Reduced margin
   },
   tableHeaderText: {
-    fontWeight: '600', // Usa um peso de fonte mais leve
+    fontWeight: 'bold',
     color: primaryColor,
     textAlign: 'left',
     flex: 1,
-    fontSize: 16, // Aumenta o tamanho da fonte
+    fontSize: 14, // Reduced font size
   },
   tableRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 12, // Aumenta o padding vertical
+    paddingVertical: 8, // Reduced padding
     borderBottomWidth: 1,
     borderBottomColor: lightGrayColor,
   },
@@ -884,31 +931,32 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     flex: 1,
     overflow: 'hidden',
-    fontSize: 14, // Aumenta o tamanho da fonte
+    fontSize: 10, // Reduced font size
   },
   uploadButton: {
     flexDirection: 'row',
     backgroundColor: whiteColor,
-    borderRadius: 24, // Aumenta o arredondamento
-    paddingVertical: 12, // Aumenta o padding vertical
-    paddingHorizontal: 24, // Aumenta o padding horizontal
+    borderRadius: 24,
+    paddingVertical: 10, // Reduced padding
+    paddingHorizontal: 20, // Reduced padding
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 0, // Remove elevation (substitui por boxShadow)
-    shadowColor: '#000', // Adiciona shadowColor
+    elevation: 0,
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1, // Ajusta a opacidade da sombra
-    shadowRadius: 4, // Ajusta o raio da sombra
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     borderWidth: 1,
     borderColor: primaryColor,
     alignSelf: 'center',
+    width: '100%', // Make it wider
   },
   uploadButtonText: {
-    fontSize: 18, // Aumenta o tamanho da fonte
-    fontWeight: '600', // Usa um peso de fonte mais leve
+    fontSize: 16, // Reduced font size
+    fontWeight: '600',
     color: primaryColor,
   },
   middleCardSpacing: {
@@ -916,7 +964,9 @@ const styles = StyleSheet.create({
     marginRight: 0,
   },
   sectionSpacing: {
-    marginTop: 24, // Aumenta o margin top
+    width: '100%',
+    marginBottom: 16, // Reduced margin
+    marginTop: 16, // Reduced margin
   },
   filterUploadContainer: {
     flexDirection: 'column',
@@ -926,136 +976,161 @@ const styles = StyleSheet.create({
   filterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12, // Aumenta o margin bottom
+    marginBottom: 8, // Reduced margin
   },
   filterLabel: {
-    fontSize: 18, // Aumenta o tamanho da fonte
-    fontWeight: '600', // Usa um peso de fonte mais leve
+    fontSize: 16, // Reduced font size
+    fontWeight: 'bold',
     color: primaryColor,
-    marginRight: 12, // Aumenta o margin right
+    marginRight: 0, // Reduced margin
   },
   picker: {
-    height: 48, // Aumenta a altura
-    width: Platform.OS === 'web' ? 220 : 160, // Aumenta a largura
+    width: '100%',
+    height: 36, // Reduced height
     backgroundColor: whiteColor,
     color: primaryColor,
-    borderRadius: 8, // Aumenta o arredondamento
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: primaryColor,
-    fontSize: 16, // Aumenta o tamanho da fonte
+    fontSize: 14, // Reduced font size
   },
   uploadButtonSmall: {
-    paddingVertical: 10, // Aumenta o padding vertical
-    paddingHorizontal: 20, // Aumenta o padding horizontal
+    paddingVertical: 8, // Reduced padding
+    paddingHorizontal: 16, // Reduced padding
   },
   uploadButtonTextSmall: {
-    fontSize: 16, // Aumenta o tamanho da fonte
+    fontSize: 14, // Reduced font size
   },
   blueBar: {
     backgroundColor: primaryColor,
-    paddingVertical: 12, // Aumenta o padding vertical
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     width: '100%',
     marginTop: 0,
-    paddingTop: 36, // Aumenta o padding top
-    paddingHorizontal: 20, // Aumenta o padding horizontal
+    paddingTop: 36,
+    paddingHorizontal: 20,
+  },
+  blueBarContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   blueBarButton: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   blueBarText: {
     color: whiteColor,
-    fontSize: 20, // Aumenta o tamanho da fonte
-    fontWeight: '600', // Usa um peso de fonte mais leve
+    fontSize: 20,
+    fontWeight: '600',
+    marginLeft: 16,
   },
   activeTabText: {
     textDecorationLine: 'underline',
   },
   logo: {
-    width: 120, // Aumenta a largura
-    height: 48, // Aumenta a altura
+    width: 100,
+    height: 100,
+  },
+  logoContainer: {
+    width: 50,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoBackground: {
+    backgroundColor: whiteColor,
+    width: 50,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabButtonsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   verticalSeparator: {
+    width: '50%',
     height: '70%',
     width: 1,
     backgroundColor: whiteColor,
-    marginHorizontal: 12, // Aumenta o margin horizontal
+    marginHorizontal: 12,
   },
   cardTitleWeb: {
-    fontSize: 20, // Aumenta o tamanho da fonte
+    fontSize: 20,
   },
   cardValueWeb: {
-    fontSize: 36, // Aumenta o tamanho da fonte
+    fontSize: 36,
   },
   chartTitleWeb: {
-    fontSize: 22, // Aumenta o tamanho da fonte
+    fontSize: 22,
   },
   barLabelWeb: {
-    fontSize: 18, // Aumenta o tamanho da fonte
+    fontSize: 14,
   },
   barValueWeb: {
-    fontSize: 18, // Aumenta o tamanho da fonte
+    fontSize: 18,
   },
   filterLabelWeb: {
-    fontSize: 20, // Aumenta o tamanho da fonte
+    fontSize: 20,
+
   },
   pickerWeb: {
-    height: 52, // Aumenta a altura
-    width: 240, // Aumenta a largura
+    height: 40, // Reduced height
+    width: 200, // Adjusted width
   },
   uploadButtonWeb: {
-    paddingVertical: 14, // Aumenta o padding vertical
-    paddingHorizontal: 28, // Aumenta o padding horizontal
+    paddingVertical: 12, // Reduced padding
+    paddingHorizontal: 24, // Reduced padding
   },
   uploadButtonTextWeb: {
-    fontSize: 20, // Aumenta o tamanho da fonte
+    fontSize: 18,
   },
   tableHeaderTextWeb: {
-    fontSize: 18, // Aumenta o tamanho da fonte
+    fontSize: 16, // Reduced font size
   },
   tableCellTextWeb: {
-    fontSize: 16, // Aumenta o tamanho da fonte
+    fontSize: 14, // Reduced font size
   },
   blueBarTextWeb: {
-    fontSize: 22, // Aumenta o tamanho da fonte
+    flex: 1,
+    fontSize: 22,
+    textAlign: 'left',
   },
   downloadButton: {
     flex: 0.5,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: primaryColor,
-    width: 36, // Aumenta a largura
-    height: 36, // Aumenta a altura
-    borderRadius: 18, // Aumenta o arredondamento
+    width: 30, // Reduced width
+    height: 30, // Reduced height
+    borderRadius: 15, // Reduced radius
   },
   filterButton: {
     backgroundColor: whiteColor,
-    borderRadius: 24, // Aumenta o arredondamento
-    paddingVertical: 12, // Aumenta o padding vertical
-    paddingHorizontal: 24, // Aumenta o padding horizontal
+    borderRadius: 24,
+    paddingVertical: 10, // Reduced padding
+    paddingHorizontal: 20, // Reduced padding
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 0, // Remove elevation (substitui por boxShadow)
-    shadowColor: '#000', // Adiciona shadowColor
+    elevation: 0,
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1, // Ajusta a opacidade da sombra
-    shadowRadius: 4, // Ajusta o raio da sombra
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     borderWidth: 1,
     borderColor: primaryColor,
-    marginBottom: 12, // Aumenta o margin bottom
+    marginBottom: 10, // Reduced margin
+    width: '100%', // Make it wider
   },
   filterButtonText: {
-    fontSize: 18, // Aumenta o tamanho da fonte
-    fontWeight: '600', // Usa um peso de fonte mais leve
+    fontSize: 16, // Reduced font size
+    fontWeight: '600',
     color: primaryColor,
   },
   centeredView: {
@@ -1081,7 +1156,7 @@ const styles = StyleSheet.create({
     width: '80%',
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 15,
     textAlign: 'center',
@@ -1116,48 +1191,49 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    marginBottom: 10, // Reduced margin
+    width: '100%', // Search container takes full width
   },
   searchInput: {
     flex: 1,
     backgroundColor: whiteColor,
     borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginRight: 10,
+    paddingVertical: 8, // Reduced padding
+    paddingHorizontal: 16, // Reduced padding
+    marginRight: 8, // Reduced margin
     elevation: 3,
     boxShadow: '0px 2px 2px rgba(0, 0, 0, 0.1)',
   },
   plusButton: {
     backgroundColor: primaryColor,
-    width: 25,
-    height: 25,
-    borderRadius: 12.5,
+    width: 30, // Reduced width
+    height: 30, // Reduced height
+    borderRadius: 15, // Reduced radius
     alignItems: 'center',
     justifyContent: 'center',
   },
   plusButtonText: {
     color: whiteColor,
-    fontSize: 16,
+    fontSize: 14, // Reduced font size
     fontWeight: 'bold',
   },
   uploadButtonModal: {
     flexDirection: 'row',
     backgroundColor: whiteColor,
     borderRadius: 20,
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    paddingVertical: 12, // Reduced padding
+    paddingHorizontal: 16, // Reduced padding
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 3,
     boxShadow: '0px 2px 2px rgba(0, 0, 0, 0.1)',
     borderWidth: 1,
     borderColor: primaryColor,
-    marginBottom: 20,
+    marginBottom: 16, // Reduced margin
     width: '100%',
   },
   uploadButtonTextModal: {
-    fontSize: 16,
+    fontSize: 14, // Reduced font size
     fontWeight: 'bold',
     color: primaryColor,
     textAlign: 'center',
@@ -1167,20 +1243,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    marginBottom: 20,
+    marginBottom: 16, // Reduced margin
   },
   datePickerButton: {
     backgroundColor: whiteColor,
     borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingVertical: 8, // Reduced padding
+    paddingHorizontal: 16, // Reduced padding
     elevation: 3,
     boxShadow: '0px 2px 2px rgba(0, 0, 0, 0.1)',
     flex: 1,
-    marginLeft: 10,
+    marginLeft: 8, // Reduced margin
   },
   datePickerButtonText: {
-    fontSize: 16,
+    fontSize: 14, // Reduced font size
     color: primaryColor,
     textAlign: 'center',
   },
@@ -1192,8 +1268,8 @@ const styles = StyleSheet.create({
   modalButton: {
     backgroundColor: primaryColor,
     borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingVertical: 8, // Reduced padding
+    paddingHorizontal: 16, // Reduced padding
     elevation: 2,
   },
   modalButtonText: {
@@ -1209,14 +1285,25 @@ const styles = StyleSheet.create({
     backgroundColor: primaryColor,
     borderRadius: 20,
     padding: 5,
+    marginLeft: 'auto',
   },
   webDatePickerInput: {
-    padding: 10,
+    padding: 8, // Reduced padding
     borderWidth: 1,
     borderColor: lightGrayColor,
     borderRadius: 5,
-    fontSize: 16,
+    fontSize: 14, // Reduced font size
     color: primaryColor,
     width: '100%',
+  },
+  plusButtonSpacing: {
+    marginLeft: 6, // Reduced margin
+  },
+  barInfoContainer: {
+    marginBottom: 10,
+  },
+  barInfoText: {
+    fontSize: 14,
+    color: grayColor,
   },
 });

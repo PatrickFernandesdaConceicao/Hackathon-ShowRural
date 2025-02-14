@@ -13,8 +13,12 @@ const App = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Login">
-        <Stack.Screen name="Login" component={LoginAgroLabs} />
-        <Stack.Screen name="Dashboard" component={Dashboard} />
+        <Stack.Screen name="Login" 
+        component={LoginAgroLabs} 
+        options={{headerShown: false}} />
+        <Stack.Screen name="Dashboard" 
+        component={Dashboard}
+        options={{headerShown: false}} />
       </Stack.Navigator>
     </NavigationContainer>
   );
