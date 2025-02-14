@@ -14,12 +14,12 @@ export async function listenNotifications() {
         
             if (status === 'pending' && dateIsos <= new Date().toISOString().split('T')[0]) {
                 await EmailProvider.sendEmail({
-                    corpo: "Teste",
                     to: "patrickfernandesconceicao@gmail.com",
-                    subject: "Teste",
-                    titulo: title_document,
-                    text: "Teste"
+                    subject: `O documento "${title_document}" entrou na data de notificação e precisa ser verificado.`,
+                    titulo: "Notificação de Documento para Verificação",
+                    text: `Olá,\nInformamos que o documento **"${title_document}"** entrou na data de notificação e precisa ser verificado.\nPor favor, acesse o sistema para revisar e tomar as devidas providências.\nAtenciosamente,\nDocus`
                 });
+                console.log("Enviou notificação");
         
                 await updateStatusNotification(id_document, 'enviado');
             }

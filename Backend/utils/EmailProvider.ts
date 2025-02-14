@@ -14,8 +14,7 @@ export class EmailProvider {
         to: string,
         subject: string,
         text: string,
-        titulo: string, 
-        corpo: string
+        titulo: string
     }) {
         const mailOptions = {
             from: "deathboooom@gmail.com",

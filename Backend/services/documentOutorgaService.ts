@@ -19,8 +19,6 @@ export class DocumentOutorgaService {
             // Extrai as informações relevantes
             const extractedData = extractRelevantInfo(extractedText);
 
-            console.log(extractedData); // Exibe os dados extraídos
-
             return extractedData;
         } catch (error) {
             console.error("Erro ao processar PDF:", error);

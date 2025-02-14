@@ -20,11 +20,9 @@ export class DocumentFileService {
             // Extrai texto do PDF
             const pdfData = await pdf(buffer);
             const extractedText = pdfData.text;
-            console.log(extractedText);
 
             // Extrai as informações relevantes
             const extractedData = extractRelevantInfo(extractedText) as Omit<Omit<Document, "id">, "title">;
-            console.log(extractedData)
 
             const newDocumentFile = await DocumentFileRepositorie.create(data);
             const newDocument = await DocumentRepositorie.create({
@@ -126,7 +124,6 @@ function extractRelevantInfo(text: string) {
             line.startsWith("9. CONDICIONANTES") ||
             line.startsWith("10. CONDICIONANTES")
         ) {
-            console.log("OI")
             // Captura todas as linhas após "4. CONDICIONANTES" até o próximo título ou final do texto
             let conditions = [];
             for (let j = i + 1; j < lines.length; j++) {
