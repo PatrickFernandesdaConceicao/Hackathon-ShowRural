@@ -24,9 +24,16 @@ export class DocumentFileService {
             // Extrai as informações relevantes
             const extractedData = extractRelevantInfo(extractedText) as Omit<Omit<Document, "id">, "title">;
 
+            const dateString = extractedData.expirate_date;
+            const [day, month, year] = dateString.split("/").map(Number);
+            const date = new Date(year, month - 1, day);
+            const isoString = date.toISOString();
+
+            const dateTransform = isoString;
             const newDocumentFile = await DocumentFileRepositorie.create(data);
             const newDocument = await DocumentRepositorie.create({
                 ...extractedData,
+                expirate_date: isoString,
                 id: newDocumentFile.id,
                 title: `${extractedData.corporate_reason} - ${extractedData.cpf_cnpj}`
             });

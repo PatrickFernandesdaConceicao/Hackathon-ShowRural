@@ -226,7 +226,11 @@ const DocumentsScreen = ({ filterValue, setFilterValue, filteredTableData, style
         {filteredTableData.map((row, index) => (
           <View style={styles.tableRow} key={index}>
             <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{row.cpf_cnpj}</Text>
-            <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{row.expirate_date}</Text>
+            <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{new Date(row.expirate_date).toLocaleDateString("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+})}</Text>
             <TouchableOpacity style={styles.downloadButton} onPress={() => handleDownload(row)}>
               <MaterialIcons name="file-download" size={isSmallScreen ? 20 : 24} color={whiteColor} />
             </TouchableOpacity>
@@ -454,14 +458,16 @@ export default function Dashboard() {
   //   applyFilter();
   // }, [filterValue, contractData.tableData]);
 
-  const applyFilter = () => {
+  const applyFilter = (documents) => {
     let filteredData = documents;
+    console.log(documents)
 
     if (filterValue === '6 Meses') {
       filteredData = filteredData.filter(item => {
         const expirationDate = new Date(item.expirate_date);
         const sixMonthsFromNow = new Date();
         sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+        console.log(expirationDate);
         return expirationDate <= sixMonthsFromNow && expirationDate > new Date();
       });
     } else if (filterValue === 'Vencidos') {
@@ -482,7 +488,7 @@ export default function Dashboard() {
       return result.json();
     }).then((documents) => {
       setDocuments(documents);
-      applyFilter();
+      applyFilter(documents);
       console.log(documents)
     })
   });
@@ -595,7 +601,7 @@ export default function Dashboard() {
           <DocumentsScreen
             filterValue={filterValue}
             setFilterValue={setFilterValue}
-            filteredTableData={documents}
+            filteredTableData={filteredTableData}
             styles={styles}
             handleDocumentUpload={handleDocumentUpload}
             screenSize={screenSize}
