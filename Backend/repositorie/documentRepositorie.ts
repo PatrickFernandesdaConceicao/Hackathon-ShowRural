@@ -30,4 +30,16 @@ export class DocumentRepositorie {
 
         return documents;
     }
+
+    static async findBySpecify(specific_activity: string): Promise<Omit<Document, "conditions">[]> {
+        const documents = await PrismaDB.prisma.document.findMany({
+            where: {
+                specific_activity: {
+                    contains: specific_activity
+                }
+            }
+        });
+
+        return documents;
+    }
 }

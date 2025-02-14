@@ -31,4 +31,10 @@ export class DocumentService {
 
         return document;
     }
+
+    static async findBySpecificActivity(specific_activity: string) {
+        const documents = await DocumentRepositorie.findBySpecify(specific_activity);
+
+        return documents;
+    }
 }

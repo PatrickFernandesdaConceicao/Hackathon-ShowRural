@@ -131,9 +131,9 @@ const DashboardScreen = ({ documents, calculateBarWidth, maxValue, styles, isWeb
 
   return (
     <View>
-      <View style={styles.searchContainer}>
-        <TextInput style={styles.searchInput} placeholder="Pesquisar Atividade específica" />
-      </View>
+      {/* <View style={styles.searchContainer}>
+        <TextInput style={styles.searchInput}  placeholder="Pesquisar Atividade específica" />
+      </View> */}
       <View style={styles.row}>
         <View style={[styles.card, cardStyle]}>
           <Text style={[styles.cardTitle, isWeb && styles.cardTitleWeb]}>Licenças Ativas</Text>
@@ -182,7 +182,7 @@ const DashboardScreen = ({ documents, calculateBarWidth, maxValue, styles, isWeb
 };
 
 // Componente para a tela de Documentos
-const DocumentsScreen = ({ filterValue, setFilterValue, filteredTableData, styles, handleDocumentUpload, screenSize, isWeb, isSmallScreen, onPlusPress, handleDownload }) => {
+const DocumentsScreen = ({ filterValue, setFilterValue, filteredTableData, styles, handleDocumentUpload, screenSize, isWeb, isSmallScreen, onPlusPress, handleDownload, setQueryValue }) => {
   const [modalVisible, setModalVisible] = useState(false);
 
   const openFilterModal = () => {
@@ -201,7 +201,10 @@ const DocumentsScreen = ({ filterValue, setFilterValue, filteredTableData, style
   return (
     <View>
       <View style={styles.searchContainer}>
-        <TextInput style={styles.searchInput} placeholder="Pesquisar Atividade específica" />
+        <TextInput style={styles.searchInput} onChange={(e) => {
+          console.log("AJSIDAI")
+          setQueryValue(e.target.value);
+        }} placeholder="Pesquisar Atividade específica" />
       </View>
       <View style={[styles.filterUploadContainer, styles.sectionSpacing]}>
         {isSmallScreen ? (
@@ -501,6 +504,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const isWeb = Platform.OS === 'web';
   const screenSize = useScreenSize();
+  const [queryValue, setQueryValue] = useState("");
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedDocumentForDetails, setSelectedDocumentForDetails] = useState(null);
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
@@ -536,11 +540,19 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
-        const response = await fetch("http://hackathon-showrural-backend-production.up.railway.app/documents/");
+        let response;
+        if(queryValue) {
+          const route = "http://localhost:3000/documents/?specific_activity=" + queryValue;
+          console.log(route)
+          response = await fetch(route);
+        } else {
+          response = await fetch("http://localhost:3000/documents/");
+        }
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const documents = await response.json();
+        console.log(documents);
         setDocuments(documents);
         applyFilter(documents);
       } catch (error) {
@@ -550,7 +562,7 @@ export default function Dashboard() {
     };
 
     fetchDocuments();
-  }, [applyFilter]);
+  }, [applyFilter, queryValue]);
 
 
   const calculateBarWidth = (value, maxValue) => {
@@ -590,9 +602,10 @@ export default function Dashboard() {
       console.log("Upload successful:", result);
 
       // Refresh documents after successful upload
-      const fetchDocuments = async () => {
-        try {
-          const response = await fetch("http://localhost:3000/documents/");
+      const fetchDocuments = async (query) => {
+        try {        
+          const response = await fetch("http://localhost:3000/documents/?specific_activity");
+          setQueryValue("");
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
@@ -745,6 +758,7 @@ export default function Dashboard() {
             isSmallScreen={isSmallScreen}
             onPlusPress={handlePlusPress}
             handleDownload={handleDownload}
+            setQueryValue={setQueryValue}
           />
         )}
       </ScrollView>
