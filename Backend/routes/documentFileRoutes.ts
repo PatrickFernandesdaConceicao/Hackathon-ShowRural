@@ -5,7 +5,7 @@ import { upload } from "../middlewares/multer";
 
 const documentFileRoutes = Router();
 
-documentFileRoutes.post("/", upload.single("file"), postDocumentFile);
+documentFileRoutes.post("/", postDocumentFile);
 documentFileRoutes.get("/:id", getByIdDocumentFile);
 
 export { documentFileRoutes }

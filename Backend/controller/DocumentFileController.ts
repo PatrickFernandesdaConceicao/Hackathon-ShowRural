@@ -1,9 +1,12 @@
 import { Request, Response } from "express";
 import { DocumentFileService } from "../services/documentFileService";
+import { base64ToUint8Array } from "../utils/transformers";
 
 export const postDocumentFile = async (req: Request, res: Response) => {
     try {
-        const buffer = req.file!.buffer;
+        console.log("Oi!")
+        const buffer = base64ToUint8Array(req.body.file);
+        console.log(buffer)
         const document = await DocumentFileService.create({document_pdf: buffer});
     
         res.send(document);
