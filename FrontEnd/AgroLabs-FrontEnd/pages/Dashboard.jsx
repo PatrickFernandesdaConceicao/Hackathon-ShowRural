@@ -398,13 +398,12 @@ const UploadDocumentModal = ({ visible, onClose, onUpload, renewalAlertDate, set
 
     try {
       const fileUri = selectedDocument.assets[0].uri;
-      const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+      const file = fileUri.replace("data:application/pdf;base64,", "");
+
 
       const documentData = {
         renewalDate: renewalAlertDate.toISOString(),
-        file: base64,
-        name: selectedDocument.assets[0].name,
-        type: selectedDocument.assets[0].mimeType,
+        file: file,
       };
 
       onUpload(documentData);
@@ -575,7 +574,7 @@ export default function Dashboard() {
     try {
       const json = JSON.stringify(documentData);
 
-      const response = await fetch("http://hackathon-showrural-backend-production.up.railway.app/documentFiles/", {
+      const response = await fetch("http://localhost:3000/documentFiles/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -593,7 +592,7 @@ export default function Dashboard() {
       // Refresh documents after successful upload
       const fetchDocuments = async () => {
         try {
-          const response = await fetch("http://hackathon-showrural-backend-production.up.railway.app/documents/");
+          const response = await fetch("http://localhost:3000/documents/");
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
@@ -639,7 +638,7 @@ export default function Dashboard() {
       // Show loading state to user
       Alert.alert('Download', 'Iniciando download...');
   
-      const response = await fetch(`http://hackathon-showrural-backend-production.up.railway.app/documentFiles/${documentId}`);
+      const response = await fetch(`http://localhost:3000/documentFiles/${documentId}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
