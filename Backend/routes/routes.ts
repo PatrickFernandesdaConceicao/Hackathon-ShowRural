@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { documentFileRoutes } from "./documentFileRoutes";
+import { notificationsRoutes } from "./notificationsRoutes";
 
-export const routes = Router();
+const routes = Router();
 
 routes.use("/documentFiles", documentFileRoutes);
+routes.use("/notifications", notificationsRoutes);
+
+export { routes }
