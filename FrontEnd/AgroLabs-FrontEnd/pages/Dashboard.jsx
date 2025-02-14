@@ -1,9 +1,9 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { faker } from '@faker-js/faker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
+import * as Permissions from 'expo-permissions';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Dimensions, Image, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -58,7 +58,7 @@ const useScreenSize = () => {
 };
 
 // Componente para a tela de Dashboard
-const DashboardScreen = ({ contractData, calculateBarWidth, maxValue, styles, isWeb, isSmallScreen }) => {
+const DashboardScreen = ({ documents, calculateBarWidth, maxValue, styles, isWeb, isSmallScreen }) => {
   const cardStyle = useMemo(() => ({
     width: isSmallScreen ? '100%' : '30%',
     marginBottom: 15,
@@ -73,6 +73,63 @@ const DashboardScreen = ({ contractData, calculateBarWidth, maxValue, styles, is
     elevation: 2,
   }), [isSmallScreen]);
 
+  // Lógica para contagem total de contratos (MAIS ROBUSTA)
+  const totalContracts = useMemo(() => {
+    if (!documents || !Array.isArray(documents)) {
+      return 0;
+    }
+    return documents.length;
+  }, [documents]);
+
+  // Contagem de licenças ativas
+  const activeContracts = useMemo(() => {
+    if (!documents || !Array.isArray(documents)) {
+      return 0;
+    }
+    return documents.filter(doc => new Date(doc.expirate_date) > new Date()).length;
+  }, [documents]);
+
+  // Contagem de licenças a 6 meses do vencimento
+  const expiringContracts = useMemo(() => {
+    if (!documents || !Array.isArray(documents)) {
+      return 0;
+    }
+    return documents.filter(doc => {
+      const expirationDate = new Date(doc.expirate_date);
+      const sixMonthsFromNow = new Date();
+      sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+      return expirationDate <= sixMonthsFromNow && expirationDate > new Date();
+    }).length;
+  }, [documents]);
+
+  // Contagem de licenças vencidas
+  const expiredContracts = useMemo(() => {
+    if (!documents || !Array.isArray(documents)) {
+      return 0;
+    }
+    return documents.filter(doc => new Date(doc.expirate_date) < new Date()).length;
+  }, [documents]);
+
+  // Contratos por Razão Social (Substituindo os dados de exemplo)
+  const contractsByCorporateReason = useMemo(() => {
+    if (!documents || !Array.isArray(documents)) {
+      return [];
+    }
+
+    const counts = {};
+    documents.forEach(doc => {
+      const reason = doc.corporate_reason || 'Sem Razão Social';
+      counts[reason] = (counts[reason] || 0) + 1;
+    });
+
+    return Object.entries(counts).map(([label, value]) => ({ label, value }));
+  }, [documents]);
+
+  const maxReasonValue = useMemo(() => {
+    return Math.max(...contractsByCorporateReason.map(item => item.value), 0);
+  }, [contractsByCorporateReason]);
+
+
   return (
     <View>
       <View style={styles.searchContainer}>
@@ -82,27 +139,36 @@ const DashboardScreen = ({ contractData, calculateBarWidth, maxValue, styles, is
       <View style={styles.row}>
         <View style={[styles.card, cardStyle]}>
           <Text style={[styles.cardTitle, isWeb && styles.cardTitleWeb]}>Licenças Ativas</Text>
-          <Text style={[styles.cardValue, isWeb && styles.cardValueWeb]}>{contractData.activeContracts}</Text>
+          <Text style={[styles.cardValue, isWeb && styles.cardValueWeb]}>{activeContracts}</Text>
         </View>
         <View style={[styles.card, cardStyle, styles.middleCardSpacing]}>
           <Text style={[styles.cardTitle, isWeb && styles.cardTitleWeb]}>Licenças a 6 meses do vencimento</Text>
-          <Text style={[styles.cardValue, isWeb && styles.cardValueWeb]}>{contractData.expiringContracts}</Text>
+          <Text style={[styles.cardValue, isWeb && styles.cardValueWeb]}>{expiringContracts}</Text>
         </View>
         <View style={[styles.card, cardStyle]}>
           <Text style={[styles.cardTitle, isWeb && styles.cardTitleWeb]}>Licenças Vencidas</Text>
-          <Text style={[styles.cardValue, isWeb && styles.cardValueWeb]}>{contractData.expiredContracts}</Text>
+          <Text style={[styles.cardValue, isWeb && styles.cardValueWeb]}>{expiredContracts}</Text>
         </View>
       </View>
 
+      {/* Novos cards para exibir a contagem de CNPJs e contratos */}
+      <View style={styles.row}>
+        <View style={[styles.card, cardStyle]}>
+          <Text style={[styles.cardTitle, isWeb && styles.cardTitleWeb]}>Total de Contratos</Text>
+          <Text style={[styles.cardValue, isWeb && styles.cardValueWeb]}>{totalContracts}</Text>
+        </View>
+      </View>
+
+
       <View style={[styles.chartCard, styles.sectionSpacing]}>
-        <Text style={[styles.chartTitle, isWeb && styles.chartTitleWeb]}>Contratos por CNPJ</Text>
-        {contractData.cnpjContracts.map((item, index) => (
+        <Text style={[styles.chartTitle, isWeb && styles.chartTitleWeb]}>Contratos por Razão Social</Text>
+        {contractsByCorporateReason.map((item, index) => (
           <View style={styles.bar} key={index}>
             <Text style={[styles.barLabel, isWeb && styles.barLabelWeb]}>{item.label}</Text>
             <View style={styles.barContainer}>
               <LinearGradient
                 colors={[primaryColor, '#668ad8']}
-                style={[styles.barFill, { width: calculateBarWidth(item.value, maxValue) }]}
+                style={[styles.barFill, { width: calculateBarWidth(item.value, maxReasonValue) }]}
                 start={[0, 0]}
                 end={[1, 0]}
               />
@@ -227,10 +293,10 @@ const DocumentsScreen = ({ filterValue, setFilterValue, filteredTableData, style
           <View style={styles.tableRow} key={index}>
             <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{row.cpf_cnpj}</Text>
             <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{new Date(row.expirate_date).toLocaleDateString("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-})}</Text>
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}</Text>
             <TouchableOpacity style={styles.downloadButton} onPress={() => handleDownload(row)}>
               <MaterialIcons name="file-download" size={isSmallScreen ? 20 : 24} color={whiteColor} />
             </TouchableOpacity>
@@ -264,7 +330,11 @@ const DocumentDetails = ({ visible, onClose, documentData }) => {
           <Text><Text style={styles.boldText}>Razão social:</Text> {documentData.corporate_reason}</Text>
           <Text><Text style={styles.boldText}>Número do protocolo:</Text> {documentData.num_protocol}</Text>
           <Text><Text style={styles.boldText}>Número do documento:</Text> {documentData.num_documento}</Text>
-          <Text><Text style={styles.boldText}>Validade da Licença:</Text> {documentData.expirate_date}</Text>
+          <Text><Text style={styles.boldText}>Validade da Licença:</Text> {new Date(documentData.expirate_date).toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })}</Text>
           <Text><Text style={styles.boldText}>Atividade específica:</Text> {documentData.specific_activity}</Text>
           <TouchableOpacity style={styles.modalCloseButton} onPress={onClose}>
             <Text style={styles.modalCloseButtonText}>Fechar</Text>
@@ -299,21 +369,9 @@ const UploadDocumentModal = ({ visible, onClose, onUpload, renewalAlertDate, set
         type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
         multiple: false,
       });
-      console.log(result);
 
       if (result.canceled === false) {
-        // const fileUri = result.uri;
-        // const fileInfo = await FileSystem.getInfoAsync(fileUri, { size: true });
-
-        // if (!fileInfo.exists) {
-        //   Alert.alert('Erro', 'O arquivo não existe.');
-        //   return;
-        // }
-
-        // const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
         setSelectedDocument({ ...result });
-      } else {
-        console.log("DEU RUIM")
       }
     } catch (err) {
       console.error('Error picking document:', err);
@@ -333,20 +391,29 @@ const UploadDocumentModal = ({ visible, onClose, onUpload, renewalAlertDate, set
   };
 
   const handleUpload = async () => {
-    console.log("ESTOU TENTANDO ENVIAR");
     if (!renewalAlertDate || !selectedDocument) {
       Alert.alert('Erro', 'Por favor, selecione um documento e uma data de renovação.');
       return;
     }
 
-    const documentData = {
-      renewalDate: renewalAlertDate,
-      ...selectedDocument
-    };
-    
-    console.log("Documento data:", documentData);
-    onUpload(documentData);
-    onClose();
+    try {
+      const fileUri = selectedDocument.assets[0].uri;
+      const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+
+      const documentData = {
+        renewalDate: renewalAlertDate.toISOString(),
+        file: base64,
+        name: selectedDocument.assets[0].name,
+        type: selectedDocument.assets[0].mimeType,
+      };
+
+      onUpload(documentData);
+      onClose();
+
+    } catch (error) {
+      console.error("Erro ao ler o arquivo:", error);
+      Alert.alert('Erro', 'Erro ao processar o arquivo.');
+    }
   };
 
   const formatDate = (date) => {
@@ -372,7 +439,7 @@ const UploadDocumentModal = ({ visible, onClose, onUpload, renewalAlertDate, set
             {selectedDocument ? (
               <>
                 <MaterialIcons name="file-upload" size={24} color={primaryColor} style={{ marginRight: 5 }} />
-                <Text style={styles.uploadButtonTextModal}>Documento Selecionado: {selectedDocument.assets[0].file.name}</Text>
+                <Text style={styles.uploadButtonTextModal}>Documento Selecionado: {selectedDocument.assets[0].name}</Text>
               </>
             ) : (
               <>
@@ -425,18 +492,6 @@ const UploadDocumentModal = ({ visible, onClose, onUpload, renewalAlertDate, set
 
 // Componente principal do Dashboard
 export default function Dashboard() {
-  const [contractData, setContractData] = useState({
-    activeContracts: 125,
-    expiringContracts: 50,
-    expiredContracts: 5,
-    cnpjContracts: [
-      { label: 'Exemplo 01', value: 40 },
-      { label: 'Exemplo 02', value: 35 },
-      { label: 'Exemplo 03', value: 58 },
-    ],
-    loading: false,
-  });
-
   const [documents, setDocuments] = useState([])
   const [filterValue, setFilterValue] = useState('TODOS');
   const [filteredTableData, setFilteredTableData] = useState([]);
@@ -454,20 +509,14 @@ export default function Dashboard() {
     return screenSize === 'small' || screenSize === 'medium';
   }, [screenSize]);
 
-  // useEffect(() => {
-  //   applyFilter();
-  // }, [filterValue, contractData.tableData]);
-
   const applyFilter = (documents) => {
     let filteredData = documents;
-    console.log(documents)
 
     if (filterValue === '6 Meses') {
       filteredData = filteredData.filter(item => {
         const expirationDate = new Date(item.expirate_date);
         const sixMonthsFromNow = new Date();
         sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
-        console.log(expirationDate);
         return expirationDate <= sixMonthsFromNow && expirationDate > new Date();
       });
     } else if (filterValue === 'Vencidos') {
@@ -482,16 +531,15 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    fetch("http://localhost:3000/documents/", {
+    fetch("http://hackathon-showrural-backend-production.up.railway.app/documents/", {
       method: "GET"
     }).then((result) => {
       return result.json();
     }).then((documents) => {
       setDocuments(documents);
       applyFilter(documents);
-      console.log(documents)
     })
-  });
+  }, []);
 
 
   const calculateBarWidth = (value, maxValue) => {
@@ -499,8 +547,6 @@ export default function Dashboard() {
     const calculatedWidth = (value / maxValue) * maxWidthPercentage;
     return `${Math.min(calculatedWidth, maxWidthPercentage)}%`;
   };
-
-  const maxValue = Math.max(...contractData.cnpjContracts.map(item => item.value));
 
   const handleDocumentUpload = () => {
     setUploadModalVisible(true);
@@ -513,19 +559,39 @@ export default function Dashboard() {
     setShowDatePicker(false);
   };
 
-  const handleDocumentUploadComplete = (documentData) => {
-    const formattedRenewalDate = documentData.renewalDate.toISOString();
-    const file = documentData.assets[0].uri.replace("data:application/pdf;base64,", "");
-    const json = JSON.stringify({file: file});
+  const handleDocumentUploadComplete = async (documentData) => {
+    try {
+      const json = JSON.stringify(documentData);
 
-    console.log(json)
-    fetch("http://localhost:3000/documentFiles/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: json
-    })
+      const response = await fetch("http://hackathon-showrural-backend-production.up.railway.app/documentFiles/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: json
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Upload successful:", result);
+
+      // Refresh documents after successful upload
+      fetch("http://hackathon-showrural-backend-production.up.railway.app/documents/", {
+        method: "GET"
+      }).then((result) => {
+        return result.json();
+      }).then((documents) => {
+        setDocuments(documents);
+        applyFilter(documents);
+      })
+
+    } catch (error) {
+      console.error("Upload failed:", error);
+      Alert.alert('Erro', 'Falha ao enviar o documento.');
+    }
   };
 
   const handlePlusPress = (rowData) => {
@@ -538,32 +604,66 @@ export default function Dashboard() {
   };
 
   const handleDownload = async (rowData) => {
-    if (!rowData.base64) {
-      Alert.alert('Erro', 'Documento não disponível para download.');
-      return;
-    }
-
     try {
-      const filename = rowData.name || 'documento.pdf';
-      const uri = FileSystem.cacheDirectory + filename;
-      const base64Data = rowData.base64;
-
-      await FileSystem.writeAsStringAsync(uri, base64Data, { encoding: FileSystem.EncodingType.Base64 });
-
-      if (Platform.OS === 'ios') {
-        await FileSystem.downloadAsync(
-          uri,
-          FileSystem.documentDirectory + filename
-        );
-        Alert.alert('Sucesso', 'Documento salvo em seus arquivos.');
-      } else {
-        Alert.alert('Sucesso', 'Documento salvo em cache. Por favor, encontre-o e mova para seus arquivos.');
+      const documentId = rowData.id;
+      if (!documentId) {
+        Alert.alert('Erro', 'ID do documento não encontrado.');
+        return;
       }
+  
+      const response = await fetch(`http://hackathon-showrural-backend-production.up.railway.app/documentFiles/${documentId}`);
+      if (!response.ok) {
+        Alert.alert('Erro', `Falha ao buscar o documento (Status: ${response.status}).`);
+        return;
+      }
+  
+      const documentData = await response.json();
+      if (!documentData || !documentData.file) {
+        Alert.alert('Erro', 'Documento não encontrado ou sem conteúdo.');
+        return;
+      }
+  
+      const filename = documentData.name || 'documento.pdf';
+      const byteCharacters = atob(documentData.file);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: documentData.type || 'application/pdf' });
+      const blobURL = URL.createObjectURL(blob);
+  
+      const link = document.createElement('a');
+      link.href = blobURL;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobURL);
+  
+      Alert.alert('Sucesso', 'Download iniciado.');
     } catch (error) {
-      console.error('Erro ao baixar o documento:', error);
       Alert.alert('Erro', 'Ocorreu um erro ao baixar o documento.');
     }
   };
+  
+
+  const maxValue = useMemo(() => {
+    const contractsByCorporateReason = () => {
+      if (!documents || !Array.isArray(documents)) {
+        return [];
+      }
+
+      const counts = {};
+      documents.forEach(doc => {
+        const reason = doc.corporate_reason || 'Sem Razão Social';
+        counts[reason] = (counts[reason] || 0) + 1;
+      });
+
+      return Object.entries(counts).map(([label, value]) => ({ label, value }));
+    };
+    return Math.max(...contractsByCorporateReason().map(item => item.value), 0);
+  }, [documents]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -590,7 +690,7 @@ export default function Dashboard() {
       <ScrollView contentContainerStyle={styles.container}>
         {activeTab === 'dashboard' ? (
           <DashboardScreen
-            contractData={contractData}
+            documents={documents}
             calculateBarWidth={calculateBarWidth}
             maxValue={maxValue}
             styles={styles}
@@ -639,12 +739,12 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: containerColor,
+    backgroundColor: containerColor, // Cor de fundo mais clara
   },
   container: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 32,
+    paddingHorizontal: 20, // Aumenta o padding horizontal
+    paddingTop: 20, // Aumenta o padding top
+    paddingBottom: 40, // Aumenta o padding bottom
     maxWidth: 1200,
     alignSelf: 'center',
   },
@@ -662,55 +762,68 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 20, // Aumenta o margin bottom
     flexWrap: 'wrap',
+    gap: 16, // Adiciona gap entre os elementos
   },
   card: {
     backgroundColor: whiteColor,
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 12, // Aumenta o arredondamento
+    padding: 20, // Aumenta o padding
+    marginBottom: 20, // Aumenta o margin bottom
     alignItems: 'center',
-    elevation: 2,
-    boxShadow: '0px 1px 1px rgba(0, 0, 0, 0.08)',
+    elevation: 0, // Remove elevation (substitui por boxShadow)
+    shadowColor: '#000', // Adiciona shadowColor
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05, // Ajusta a opacidade da sombra
+    shadowRadius: 4, // Ajusta o raio da sombra
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18, // Aumenta o tamanho da fonte
+    fontWeight: '600', // Usa um peso de fonte mais leve
     color: primaryColor,
-    marginBottom: 8,
+    marginBottom: 12, // Aumenta o margin bottom
     textAlign: 'center',
   },
   cardValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 32, // Aumenta o tamanho da fonte
+    fontWeight: '600', // Usa um peso de fonte mais leve
     color: primaryColor,
   },
   chartCard: {
     backgroundColor: whiteColor,
-    borderRadius: 8,
-    padding: 16,
-    elevation: 2,
-    boxShadow: '0px 1px 1px rgba(0, 0, 0, 0.08)',
+    borderRadius: 12, // Aumenta o arredondamento
+    padding: 20, // Aumenta o padding
+    elevation: 0, // Remove elevation (substitui por boxShadow)
+    shadowColor: '#000', // Adiciona shadowColor
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05, // Ajusta a opacidade da sombra
+    shadowRadius: 4, // Ajusta o raio da sombra
     borderColor: lightGrayColor,
     borderWidth: 1,
-    marginBottom: 20,
+    marginBottom: 24, // Aumenta o margin bottom
   },
   chartTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20, // Aumenta o tamanho da fonte
+    fontWeight: '600', // Usa um peso de fonte mais leve
     color: primaryColor,
-    marginBottom: 12,
+    marginBottom: 16, // Aumenta o margin bottom
   },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8, // Aumenta o margin bottom
   },
   barLabel: {
-    fontSize: 14,
+    fontSize: 16, // Aumenta o tamanho da fonte
     color: primaryColor,
-    width: 70,
+    width: 80, // Aumenta a largura
   },
   barContainer: {
     flexDirection: 'row',
@@ -719,12 +832,12 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   barFill: {
-    height: 16,
-    borderRadius: 8,
+    height: 18, // Aumenta a altura
+    borderRadius: 9, // Ajusta o arredondamento
     overflow: 'hidden',
   },
   barValue: {
-    fontSize: 14,
+    fontSize: 16, // Aumenta o tamanho da fonte
     color: primaryColor,
     position: 'absolute',
     right: 0,
@@ -732,30 +845,37 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     textAlign: 'right',
-    paddingRight: 5,
+    paddingRight: 8, //Aumenta o padding right
   },
   tableCard: {
     backgroundColor: whiteColor,
-    borderRadius: 8,
-    padding: 16,
-    elevation: 2,
-    boxShadow: '0px 1px 1px rgba(0, 0, 0, 0.08)',
+    borderRadius: 12, // Aumenta o arredondamento
+    padding: 20, // Aumenta o padding
+    elevation: 0, // Remove elevation (substitui por boxShadow)
+    shadowColor: '#000', // Adiciona shadowColor
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05, // Ajusta a opacidade da sombra
+    shadowRadius: 4, // Ajusta o raio da sombra
   },
   tableHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 12, // Aumenta o margin bottom
   },
   tableHeaderText: {
-    fontWeight: '600',
+    fontWeight: '600', // Usa um peso de fonte mais leve
     color: primaryColor,
     textAlign: 'left',
     flex: 1,
+    fontSize: 16, // Aumenta o tamanho da fonte
   },
   tableRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 12, // Aumenta o padding vertical
     borderBottomWidth: 1,
     borderBottomColor: lightGrayColor,
   },
@@ -764,24 +884,31 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     flex: 1,
     overflow: 'hidden',
+    fontSize: 14, // Aumenta o tamanho da fonte
   },
   uploadButton: {
     flexDirection: 'row',
     backgroundColor: whiteColor,
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    borderRadius: 24, // Aumenta o arredondamento
+    paddingVertical: 12, // Aumenta o padding vertical
+    paddingHorizontal: 24, // Aumenta o padding horizontal
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 3,
-    boxShadow: '0px 2px 2px rgba(0, 0, 0, 0.1)',
+    elevation: 0, // Remove elevation (substitui por boxShadow)
+    shadowColor: '#000', // Adiciona shadowColor
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1, // Ajusta a opacidade da sombra
+    shadowRadius: 4, // Ajusta o raio da sombra
     borderWidth: 1,
     borderColor: primaryColor,
     alignSelf: 'center',
   },
   uploadButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18, // Aumenta o tamanho da fonte
+    fontWeight: '600', // Usa um peso de fonte mais leve
     color: primaryColor,
   },
   middleCardSpacing: {
@@ -789,7 +916,7 @@ const styles = StyleSheet.create({
     marginRight: 0,
   },
   sectionSpacing: {
-    marginTop: 20,
+    marginTop: 24, // Aumenta o margin top
   },
   filterUploadContainer: {
     flexDirection: 'column',
@@ -799,55 +926,56 @@ const styles = StyleSheet.create({
   filterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12, // Aumenta o margin bottom
   },
   filterLabel: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18, // Aumenta o tamanho da fonte
+    fontWeight: '600', // Usa um peso de fonte mais leve
     color: primaryColor,
-    marginRight: 10,
+    marginRight: 12, // Aumenta o margin right
   },
   picker: {
-    height: 40,
-    width: Platform.OS === 'web' ? 200 : 150,
+    height: 48, // Aumenta a altura
+    width: Platform.OS === 'web' ? 220 : 160, // Aumenta a largura
     backgroundColor: whiteColor,
     color: primaryColor,
-    borderRadius: 5,
+    borderRadius: 8, // Aumenta o arredondamento
     borderWidth: 1,
     borderColor: primaryColor,
+    fontSize: 16, // Aumenta o tamanho da fonte
   },
   uploadButtonSmall: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 10, // Aumenta o padding vertical
+    paddingHorizontal: 20, // Aumenta o padding horizontal
   },
   uploadButtonTextSmall: {
-    fontSize: 14,
+    fontSize: 16, // Aumenta o tamanho da fonte
   },
   blueBar: {
     backgroundColor: primaryColor,
-    paddingVertical: 10,
+    paddingVertical: 12, // Aumenta o padding vertical
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    marginTop: 0, // Corrigido: Removido o valor negativo para evitar sobreposição
-    paddingTop: 30,
-    paddingHorizontal: 15,
+    marginTop: 0,
+    paddingTop: 36, // Aumenta o padding top
+    paddingHorizontal: 20, // Aumenta o padding horizontal
   },
   blueBarButton: {
     alignItems: 'center',
   },
   blueBarText: {
     color: whiteColor,
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20, // Aumenta o tamanho da fonte
+    fontWeight: '600', // Usa um peso de fonte mais leve
   },
   activeTabText: {
     textDecorationLine: 'underline',
   },
   logo: {
-    width: 100,
-    height: 40,
+    width: 120, // Aumenta a largura
+    height: 48, // Aumenta a altura
   },
   tabButtonsContainer: {
     flexDirection: 'row',
@@ -857,71 +985,77 @@ const styles = StyleSheet.create({
     height: '70%',
     width: 1,
     backgroundColor: whiteColor,
-    marginHorizontal: 10,
+    marginHorizontal: 12, // Aumenta o margin horizontal
   },
   cardTitleWeb: {
-    fontSize: 18,
+    fontSize: 20, // Aumenta o tamanho da fonte
   },
   cardValueWeb: {
-    fontSize: 32,
+    fontSize: 36, // Aumenta o tamanho da fonte
   },
   chartTitleWeb: {
-    fontSize: 20,
+    fontSize: 22, // Aumenta o tamanho da fonte
   },
   barLabelWeb: {
-    fontSize: 16,
+    fontSize: 18, // Aumenta o tamanho da fonte
   },
   barValueWeb: {
-    fontSize: 16,
+    fontSize: 18, // Aumenta o tamanho da fonte
   },
   filterLabelWeb: {
-    fontSize: 18,
+    fontSize: 20, // Aumenta o tamanho da fonte
   },
   pickerWeb: {
-    height: 45,
-    width: 220,
+    height: 52, // Aumenta a altura
+    width: 240, // Aumenta a largura
   },
   uploadButtonWeb: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: 14, // Aumenta o padding vertical
+    paddingHorizontal: 28, // Aumenta o padding horizontal
   },
   uploadButtonTextWeb: {
-    fontSize: 18,
+    fontSize: 20, // Aumenta o tamanho da fonte
   },
   tableHeaderTextWeb: {
-    fontSize: 16,
+    fontSize: 18, // Aumenta o tamanho da fonte
   },
   tableCellTextWeb: {
-    fontSize: 14,
+    fontSize: 16, // Aumenta o tamanho da fonte
   },
   blueBarTextWeb: {
-    fontSize: 20,
+    fontSize: 22, // Aumenta o tamanho da fonte
   },
   downloadButton: {
     flex: 0.5,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: primaryColor,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 36, // Aumenta a largura
+    height: 36, // Aumenta a altura
+    borderRadius: 18, // Aumenta o arredondamento
   },
   filterButton: {
     backgroundColor: whiteColor,
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    borderRadius: 24, // Aumenta o arredondamento
+    paddingVertical: 12, // Aumenta o padding vertical
+    paddingHorizontal: 24, // Aumenta o padding horizontal
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 3,
-    boxShadow: '0px 2px 2px rgba(0, 0, 0, 0.1)',
+    elevation: 0, // Remove elevation (substitui por boxShadow)
+    shadowColor: '#000', // Adiciona shadowColor
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1, // Ajusta a opacidade da sombra
+    shadowRadius: 4, // Ajusta o raio da sombra
     borderWidth: 1,
     borderColor: primaryColor,
-    marginBottom: 10,
+    marginBottom: 12, // Aumenta o margin bottom
   },
   filterButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18, // Aumenta o tamanho da fonte
+    fontWeight: '600', // Usa um peso de fonte mais leve
     color: primaryColor,
   },
   centeredView: {
