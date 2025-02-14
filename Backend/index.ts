@@ -16,5 +16,4 @@ const PORT = "3000";
 
 app.listen(PORT, async () => {
     console.log("Rodando na porta: ", PORT)
-    await listenNotifications();
 });
