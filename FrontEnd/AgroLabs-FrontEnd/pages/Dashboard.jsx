@@ -136,15 +136,15 @@ const DashboardScreen = ({ documents, calculateBarWidth, maxValue, styles, isWeb
       </View> */}
       <View style={styles.row}>
         <View style={[styles.card, cardStyle]}>
-          <Text style={[styles.cardTitle, isWeb && styles.cardTitleWeb]}>Licenças Ativas</Text>
+          <Text style={[styles.cardTitle, isWeb && styles.cardTitleWeb]}>Ativos</Text>
           <Text style={[styles.cardValue, isWeb && styles.cardValueWeb]}>{activeContracts}</Text>
         </View>
         <View style={[styles.card, cardStyle, styles.middleCardSpacing]}>
-          <Text style={[styles.cardTitle, isWeb && styles.cardTitleWeb]}>Licenças a 6 meses </Text>
+          <Text style={[styles.cardTitle, isWeb && styles.cardTitleWeb]}>6 meses do vencimento</Text>
           <Text style={[styles.cardValue, isWeb && styles.cardValueWeb]}>{expiringContracts}</Text>
         </View>
         <View style={[styles.card, cardStyle]}>
-          <Text style={[styles.cardTitle, isWeb && styles.cardTitleWeb]}>Licenças Vencidas</Text>
+          <Text style={[styles.cardTitle, isWeb && styles.cardTitleWeb]}>Vencidos</Text>
           <Text style={[styles.cardValue, isWeb && styles.cardValueWeb]}>{expiredContracts}</Text>
         </View>
       </View>
