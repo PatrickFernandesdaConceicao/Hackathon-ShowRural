@@ -219,18 +219,14 @@ const DocumentsScreen = ({ filterValue, setFilterValue, filteredTableData, style
       <View style={[styles.tableCard, styles.sectionSpacing]}>
         <View style={styles.tableHeader}>
           <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableHeaderTextSize }, isWeb && styles.tableHeaderTextWeb]}>CNPJ</Text>
-          <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableHeaderTextSize }, isWeb && styles.tableHeaderTextWeb]}>Tipo</Text>
           <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableHeaderTextSize }, isWeb && styles.tableHeaderTextWeb]}>Vencimento</Text>
-          <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: tableConditionFlex, fontSize: tableHeaderTextSize }, isWeb && styles.tableHeaderTextWeb]}>Condicionamento</Text>
           <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 0.5, fontSize: tableHeaderTextSize, textAlign: 'center' }, isWeb && styles.tableHeaderTextWeb]}>Arquivo</Text>
           <Text style={[styles.tableHeaderText, { flexBasis: tableFlexBasis, flex: 0.2, fontSize: tableHeaderTextSize, textAlign: 'center' }, isWeb && styles.tableHeaderTextWeb]}></Text>
         </View>
         {filteredTableData.map((row, index) => (
           <View style={styles.tableRow} key={index}>
-            <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{row.cnpj}</Text>
-            <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{row.type}</Text>
-            <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{row.expirationDate}</Text>
-            <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: tableConditionFlex, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{row.condition}</Text>
+            <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{row.cpf_cnpj}</Text>
+            <Text style={[styles.tableCell, { flexBasis: tableFlexBasis, flex: 1, fontSize: tableCellTextSize }, isWeb && styles.tableCellTextWeb]}>{row.expirate_date}</Text>
             <TouchableOpacity style={styles.downloadButton} onPress={() => handleDownload(row)}>
               <MaterialIcons name="file-download" size={isSmallScreen ? 20 : 24} color={whiteColor} />
             </TouchableOpacity>
@@ -260,16 +256,12 @@ const DocumentDetails = ({ visible, onClose, documentData }) => {
       <View style={styles.centeredView}>
         <View style={styles.modalView}>
           <Text style={styles.modalTitle}>Detalhes do Documento</Text>
-          <Text><Text style={styles.boldText}>CNPJ/CPF:</Text> {documentData.cnpj}</Text>
-          <Text><Text style={styles.boldText}>Número do protocolo:</Text> {documentData.protocolNumber}</Text>
-          <Text><Text style={styles.boldText}>Número do documento:</Text> {documentData.documentNumber}</Text>
-          <Text><Text style={styles.boldText}>Validade da Licença:</Text> {documentData.licenseValidity}</Text>
-          <Text><Text style={styles.boldText}>Atividade:</Text> {documentData.activity}</Text>
-          <Text><Text style={styles.boldText}>Atividade específica:</Text> {documentData.specificActivity}</Text>
-          <Text><Text style={styles.boldText}>Detalhes da atividade:</Text> {documentData.activityDetails}</Text>
-          <Text><Text style={styles.boldText}>Município:</Text> {documentData.municipality}</Text>
-          <Text><Text style={styles.boldText}>Logradouro:</Text> {documentData.address}</Text>
-          <Text><Text style={styles.boldText}>CEP:</Text> {documentData.zipCode}</Text>
+          <Text><Text style={styles.boldText}>CNPJ/CPF:</Text> {documentData.cpf_cnpj}</Text>
+          <Text><Text style={styles.boldText}>Razão social:</Text> {documentData.corporate_reason}</Text>
+          <Text><Text style={styles.boldText}>Número do protocolo:</Text> {documentData.num_protocol}</Text>
+          <Text><Text style={styles.boldText}>Número do documento:</Text> {documentData.num_documento}</Text>
+          <Text><Text style={styles.boldText}>Validade da Licença:</Text> {documentData.expirate_date}</Text>
+          <Text><Text style={styles.boldText}>Atividade específica:</Text> {documentData.specific_activity}</Text>
           <TouchableOpacity style={styles.modalCloseButton} onPress={onClose}>
             <Text style={styles.modalCloseButtonText}>Fechar</Text>
           </TouchableOpacity>
@@ -303,20 +295,21 @@ const UploadDocumentModal = ({ visible, onClose, onUpload, renewalAlertDate, set
         type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
         multiple: false,
       });
+      console.log(result);
 
-      if (result.type === 'success') {
-        const fileUri = result.uri;
-        const fileInfo = await FileSystem.getInfoAsync(fileUri, { size: true });
+      if (result.canceled === false) {
+        // const fileUri = result.uri;
+        // const fileInfo = await FileSystem.getInfoAsync(fileUri, { size: true });
 
-        if (!fileInfo.exists) {
-          Alert.alert('Erro', 'O arquivo não existe.');
-          return;
-        }
+        // if (!fileInfo.exists) {
+        //   Alert.alert('Erro', 'O arquivo não existe.');
+        //   return;
+        // }
 
-        const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
-        setSelectedDocument({ ...result, base64 });
+        // const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+        setSelectedDocument({ ...result });
       } else {
-        setSelectedDocument(null);
+        console.log("DEU RUIM")
       }
     } catch (err) {
       console.error('Error picking document:', err);
@@ -336,23 +329,18 @@ const UploadDocumentModal = ({ visible, onClose, onUpload, renewalAlertDate, set
   };
 
   const handleUpload = async () => {
+    console.log("ESTOU TENTANDO ENVIAR");
     if (!renewalAlertDate || !selectedDocument) {
       Alert.alert('Erro', 'Por favor, selecione um documento e uma data de renovação.');
       return;
     }
 
-    if (!selectedDocument.base64) {
-      Alert.alert('Erro', 'O documento selecionado não possui um conteúdo válido.');
-      return;
-    }
-
     const documentData = {
-      name: selectedDocument.name,
       renewalDate: renewalAlertDate,
-      base64: selectedDocument.base64,
-      mimeType: selectedDocument.mimeType,
+      ...selectedDocument
     };
-
+    
+    console.log("Documento data:", documentData);
     onUpload(documentData);
     onClose();
   };
@@ -380,12 +368,12 @@ const UploadDocumentModal = ({ visible, onClose, onUpload, renewalAlertDate, set
             {selectedDocument ? (
               <>
                 <MaterialIcons name="file-upload" size={24} color={primaryColor} style={{ marginRight: 5 }} />
-                <Text style={styles.uploadButtonTextModal}>Documento Selecionado: {selectedDocument.name}</Text>
+                <Text style={styles.uploadButtonTextModal}>Documento Selecionado: {selectedDocument.assets[0].file.name}</Text>
               </>
             ) : (
               <>
                 <MaterialIcons name="upload-file" size={24} color={primaryColor} style={{ marginRight: 5 }} />
-                <Text style={styles.uploadButtonTextModal}>Clique ou Arraste</Text>
+                <Text style={styles.uploadButtonTextModal}>Insira o documento</Text>
               </>
             )}
           </TouchableOpacity>
@@ -442,29 +430,12 @@ export default function Dashboard() {
       { label: 'Exemplo 02', value: 35 },
       { label: 'Exemplo 03', value: 58 },
     ],
-    tableData: Array.from({ length: 10 }, () => ({
-      cnpj: faker.string.alphanumeric(14),
-      type: faker.commerce.product(),
-      expirationDate: faker.date.future().toLocaleDateString(),
-      condition: faker.lorem.sentence(5),
-      protocolNumber: faker.string.alphanumeric(10),
-      documentNumber: faker.string.alphanumeric(8),
-      licenseValidity: faker.date.future().toLocaleDateString(),
-      activity: faker.commerce.department(),
-      specificActivity: faker.commerce.productAdjective(),
-      activityDetails: faker.lorem.sentence(3),
-      municipality: faker.location.city(),
-      address: faker.location.streetAddress(),
-      zipCode: faker.location.zipCode(),
-      base64: null,
-      mimeType: null,
-      name: faker.system.fileName(),
-    })),
     loading: false,
   });
 
+  const [documents, setDocuments] = useState([])
   const [filterValue, setFilterValue] = useState('TODOS');
-  const [filteredTableData, setFilteredTableData] = useState(contractData.tableData);
+  const [filteredTableData, setFilteredTableData] = useState([]);
   const [activeTab, setActiveTab] = useState('documents');
   const isWeb = Platform.OS === 'web';
   const screenSize = useScreenSize();
@@ -479,23 +450,23 @@ export default function Dashboard() {
     return screenSize === 'small' || screenSize === 'medium';
   }, [screenSize]);
 
-  useEffect(() => {
-    applyFilter();
-  }, [filterValue, contractData.tableData]);
+  // useEffect(() => {
+  //   applyFilter();
+  // }, [filterValue, contractData.tableData]);
 
   const applyFilter = () => {
-    let filteredData = [...contractData.tableData];
+    let filteredData = documents;
 
     if (filterValue === '6 Meses') {
       filteredData = filteredData.filter(item => {
-        const expirationDate = new Date(item.expirationDate);
+        const expirationDate = new Date(item.expirate_date);
         const sixMonthsFromNow = new Date();
         sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
         return expirationDate <= sixMonthsFromNow && expirationDate > new Date();
       });
     } else if (filterValue === 'Vencidos') {
       filteredData = filteredData.filter(item => {
-        const expirationDate = new Date(item.expirationDate);
+        const expirationDate = new Date(item.expirate_date);
         const now = new Date();
         return expirationDate < now;
       });
@@ -503,6 +474,19 @@ export default function Dashboard() {
 
     setFilteredTableData(filteredData);
   };
+
+  useEffect(() => {
+    fetch("http://localhost:3000/documents/", {
+      method: "GET"
+    }).then((result) => {
+      return result.json();
+    }).then((documents) => {
+      setDocuments(documents);
+      applyFilter();
+      console.log(documents)
+    })
+  });
+
 
   const calculateBarWidth = (value, maxValue) => {
     const maxWidthPercentage = 80;
@@ -524,30 +508,18 @@ export default function Dashboard() {
   };
 
   const handleDocumentUploadComplete = (documentData) => {
-    const formattedRenewalDate = documentData.renewalDate.toLocaleDateString();
+    const formattedRenewalDate = documentData.renewalDate.toISOString();
+    const file = documentData.assets[0].uri.replace("data:application/pdf;base64,", "");
+    const json = JSON.stringify({file: file});
 
-    setContractData(prevData => ({
-      ...prevData,
-      tableData: [...prevData.tableData, {
-        cnpj: 'Novo CNPJ',
-        type: 'Novo Tipo',
-        expirationDate: formattedRenewalDate,
-        condition: 'Nova Condição',
-        protocolNumber: 'Novo Protocolo',
-        documentNumber: 'Novo Documento',
-        licenseValidity: formattedRenewalDate,
-        activity: 'Nova Atividade',
-        specificActivity: 'Nova Atividade Específica',
-        activityDetails: 'Novos Detalhes',
-        municipality: faker.location.city(),
-        address: faker.location.streetAddress(),
-        zipCode: faker.location.zipCode(),
-        base64: documentData.base64,
-        mimeType: documentData.mimeType,
-        name: documentData.name,
-      }]
-    }));
-    Alert.alert('Sucesso', 'Documento enviado com sucesso!');
+    console.log(json)
+    fetch("http://localhost:3000/documentFiles/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: json
+    })
   };
 
   const handlePlusPress = (rowData) => {
@@ -623,7 +595,7 @@ export default function Dashboard() {
           <DocumentsScreen
             filterValue={filterValue}
             setFilterValue={setFilterValue}
-            filteredTableData={filteredTableData}
+            filteredTableData={documents}
             styles={styles}
             handleDocumentUpload={handleDocumentUpload}
             screenSize={screenSize}
@@ -656,6 +628,7 @@ export default function Dashboard() {
     </SafeAreaView>
   );
 }
+
 // Estilos
 const styles = StyleSheet.create({
   safeArea: {
