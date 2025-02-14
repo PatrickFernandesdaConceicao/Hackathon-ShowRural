@@ -11,101 +11,119 @@ import {
   Dimensions,
   Animated,
   Image,
-  Platform, // Importe Platform
+  Platform,
 } from 'react-native';
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
-// Cores reutilizáveis
-const lightBlueColor = '#E8F0FE'; // Cor de fundo dos inputs
-const darkBlueColor = '#00008B';
-const whiteColor = '#FFFFFF';
-const transparentWhiteColor = 'rgba(255,255,255,0.3)';
-const semiTransparentWhiteColor = 'rgba(255,255,255,0.1)';
-const shadowColor = '#000';
-const agroLabsBlueColor = '#2148C0';
+// Cores e constantes
+const COLORS = {
+  primary: '#2563EB',
+  secondary: '#1D4ED8',
+  background: '#F8FAFC',
+  text: '#1E293B',
+  muted: '#64748B',
+  error: '#DC2626',
+  white: '#FFFFFF',
+};
 
 const { width, height } = Dimensions.get('window');
+const isSmallDevice = width < 375;
 
 const LoginAgroLabs = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [credentials, setCredentials] = useState({ username: '', password: '' });
+  const [error, setError] = useState('');
   const [shakeAnimation] = useState(new Animated.Value(0));
   const navigation = useNavigation();
 
-  const handleLogin = () => {
-    if (!username || !password) {
-      Animated.sequence([
-        Animated.timing(shakeAnimation, { toValue: 10, duration: 100, useNativeDriver: true }),
-        Animated.timing(shakeAnimation, { toValue: -10, duration: 100, useNativeDriver: true }),
-        Animated.timing(shakeAnimation, { toValue: 10, duration: 100, useNativeDriver: true }),
-        Animated.timing(shakeAnimation, { toValue: 0, duration: 100, useNativeDriver: true }),
-      ]).start();
-      return;
+  const validateForm = () => {
+    if (!credentials.username || !credentials.password) {
+      triggerShakeAnimation();
+      setError('Por favor, preencha todos os campos');
+      return false;
     }
+    setError('');
+    return true;
+  };
 
-    console.log('Logging in with:', username, password);
+  const triggerShakeAnimation = () => {
+    Animated.sequence([
+      Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnimation, { toValue: -10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnimation, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const handleLogin = () => {
+    if (!validateForm()) return;
+    
+    console.log('Login attempt with:', credentials);
     navigation.navigate('Dashboard');
   };
 
-  const handleForgotPassword = () => {
-    console.log('Forgot Password pressed');
+  const animatedStyle = {
+    transform: [{ translateX: shakeAnimation }]
   };
-
-  const shake = shakeAnimation.interpolate({
-    inputRange: [-1, 1],
-    outputRange: [-5, 5],
-  });
 
   return (
 
-        <View style={styles.container}>
+        <View style={styles.innerContainer}>
           <Image
-            source={require('../assets/icon.png')} // Caminho para a sua logo
+            source={require('../assets/icon.png')}
             style={styles.logo}
             resizeMode="contain"
           />
-          <View style={styles.formContainer}>
-            <Text style={styles.label}>Username</Text>
-            <Animated.View style={[styles.inputContainer, { transform: [{ translateX: shake }] }]}>
+
+          <Animated.View style={[styles.formContainer, animatedStyle]}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Username</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Digite seu username"
-                placeholderTextColor="#888"
-                value={username}
-                onChangeText={setUsername}
+                placeholderTextColor={COLORS.muted}
+                value={credentials.username}
+                onChangeText={(text) => setCredentials({ ...credentials, username: text })}
                 autoCapitalize="none"
               />
-            </Animated.View>
+            </View>
 
-            <Text style={styles.label}>Password</Text>
-            <Animated.View style={[styles.inputContainer, { transform: [{ translateX: shake }] }]}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Senha</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Digite sua senha"
-                placeholderTextColor="#888"
-                secureTextEntry={true}
-                value={password}
-                onChangeText={setPassword}
+                placeholderTextColor={COLORS.muted}
+                secureTextEntry
+                value={credentials.password}
+                onChangeText={(text) => setCredentials({ ...credentials, password: text })}
               />
-            </Animated.View>
+            </View>
 
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            <TouchableOpacity 
+              style={styles.loginButton}
+              onPress={handleLogin}
+              activeOpacity={0.9}
+            >
               <LinearGradient
-                colors={[agroLabsBlueColor, darkBlueColor]}
-                style={styles.gradientButton}
+                colors={[COLORS.primary, COLORS.secondary]}
+                style={styles.gradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={styles.loginButtonText}>Login</Text>
+                <Text style={styles.buttonText}>Entrar</Text>
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleForgotPassword}>
-              <Text style={styles.forgotPasswordText}>Esqueci minha senha?</Text>
+            <TouchableOpacity
+              style={styles.forgotPasswordButton}
+              onPress={() => navigation.navigate('ForgotPassword')}
+            >
+              <Text style={styles.forgotPasswordText}>Esqueceu sua senha?</Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         </View>
   );
 };
@@ -113,63 +131,78 @@ const LoginAgroLabs = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff', // Fundo branco
-    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  innerContainer: {
+    flex: 1,
     justifyContent: 'center',
-    padding: 20,
+    alignItems: 'center',
+    padding: isSmallDevice ? 20 : 30,
   },
   logo: {
-    width: 150,
-    height: 150,
-    marginBottom: 30,
+    width: isSmallDevice ? 120 : 150,
+    height: isSmallDevice ? 120 : 150,
+    marginBottom: isSmallDevice ? 30 : 40,
   },
   formContainer: {
-    width: '80%',
+    width: '100%',
     maxWidth: 400,
   },
-  label: {
-    fontSize: 16,
-    marginBottom: 5,
-    color: '#333',
-  },
-  inputContainer: {
-    width: '100%',
+  inputGroup: {
     marginBottom: 20,
-    shadowColor: shadowColor,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 3,
+  },
+  label: {
+    fontSize: isSmallDevice ? 14 : 16,
+    color: COLORS.text,
+    marginBottom: 8,
+    fontWeight: '500',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
+    backgroundColor: COLORS.white,
     borderRadius: 12,
-    padding: 12,
+    padding: Platform.OS === 'ios' ? 16 : 14,
     fontSize: 16,
-    backgroundColor: lightBlueColor, // Cor de fundo dos inputs
-    color: '#333',
+    color: COLORS.text,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   loginButton: {
     borderRadius: 12,
-    overflow: 'hidden', // Garante que o gradiente não vaze
-    marginBottom: 15,
+    overflow: 'hidden',
+    marginTop: 15,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
   },
-  gradientButton: {
-    paddingVertical: 12,
+  gradient: {
+    paddingVertical: 16,
     alignItems: 'center',
   },
-  loginButtonText: {
-    color: whiteColor,
-    fontSize: 18,
-    fontWeight: 'bold',
+  buttonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  forgotPasswordButton: {
+    marginTop: 20,
+    alignSelf: 'center',
   },
   forgotPasswordText: {
-    color: agroLabsBlueColor,
-    fontSize: 16,
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  errorText: {
+    color: COLORS.error,
+    fontSize: 14,
+    marginVertical: 10,
     textAlign: 'center',
   },
 });
