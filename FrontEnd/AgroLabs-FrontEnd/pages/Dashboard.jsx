@@ -457,6 +457,10 @@ const UploadDocumentModal = ({ visible, onClose, onUpload, renewalAlertDate, set
             </TouchableOpacity>
           </View>
 
+          <Text> </Text>
+          <Text style={styles.uploadButtonTextModal}>Escolha a data que deseja ser notificado.</Text>
+          <Text> </Text>
+
           {showDatePicker && (
             Platform.OS === 'web' ? (
               <WebDateTimePicker
@@ -915,7 +919,7 @@ const styles = StyleSheet.create({
   tableHeaderText: {
     fontWeight: 'bold',
     color: primaryColor,
-    textAlign: 'left',
+    textAlign: 'center',
     flex: 1,
     fontSize: 14, // Reduced font size
   },
@@ -930,6 +934,7 @@ const styles = StyleSheet.create({
     color: grayColor,
     textAlign: 'left',
     flex: 1,
+    paddingLeft: 4,
     overflow: 'hidden',
     fontSize: 10, // Reduced font size
   },
